@@ -109,9 +109,13 @@ class Agent:
                 )
                 if self.verbose:
                     for block in tool_results:
+                        content = block.get('content', '')
+                        print(
+                            f"\n[{self.name}] Tool result length: {len(content)}"
+                        )
                         print(
                             f"\n[{self.name}] Tool result: "
-                            f"{block.get('content')}"
+                            f"{content}"
                         )
                 await self.history.add_message("user", tool_results)
             else:

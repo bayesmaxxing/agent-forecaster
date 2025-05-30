@@ -13,7 +13,11 @@ async def _execute_single_tool(
     try:
         # Execute the tool directly
         result = await tool_dict[call.name].execute(**call.input)
-        response["content"] = str(result)
+        
+        # Convert to string for Claude API
+        str_result = str(result)
+        
+        response["content"] = str_result
     except KeyError:
         response["content"] = f"Tool '{call.name}' not found"
         response["is_error"] = True

@@ -1,4 +1,12 @@
-[tool.pyright]
-venvPath = "computer-use-demo"
-venv = ".venv"
-useLibraryCodeForTypes = false
+[project]
+name = "agent-forecaster"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "anthropic>=0.52.1",
+    "fastapi>=0.115.12",
+    "mcp>=1.9.2",
+    "requests>=2.32.3",
+]
