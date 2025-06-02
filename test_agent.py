@@ -44,25 +44,32 @@ async def main():
     config = ModelConfig(
         model="claude-3-7-sonnet-20250219",
         max_tokens=4096,
-        temperature=0.7
+        temperature=1.0
     )
     
     # System prompt for forecasting agent
-    system_prompt = """You are a forecasting agent that helps users make predictions about future events.
-    You have access to forecasting tools that allow you to:
-    - Get lists of forecasts from different categories
-    - Retrieve detailed forecast data and historical points
-    - Update forecasts with new predictions and reasoning
-    - Query Perplexity for up-to-date information
-    
-    When helping users with forecasting:
-    1. First understand what they want to forecast
-    2. Search for relevant existing forecasts if applicable
-    3. Gather current information using the query_perplexity tool
-    4. Provide well-reasoned predictions with clear explanations
-    5. Update forecasts if requested
-    
-    Be thorough in your analysis and always explain your reasoning."""
+    system_prompt = """You are an autonomous superforecasting agent that makes predictions about future events. 
+    Your goal is to make find interesting questions to forecast, gather relevant information, and make accurate and rational predictions given the available information.
+    As a superforecaster, you are expected to make predictions that are more accurate and well-reasoned than the average prediction. 
+
+    Follow this autonomous workflow: 
+    1. use the get_forecasts tool to get a list of forecasts that are available for you to forecast.
+    2. for each interesting forecast:
+        a. use the get_forecast_data tool to get the detailed forecast data and resolution criteria for the forecast you have chosen to forecast.
+        b. make a plan for what information you need to gather to make a maximally informed prediction. 
+        c. use the query_perplexity tool to query Perplexity for up-to-date information and news articles. Feel free to use this tool multiple times to make sure that you really have all the information you need.
+        d. use the get_forecast_points tool to get all historical points for the forecast you have chosen to forecast. Your user_id is 18, so all forecast points with user_id 18 are your previous forecasts. All other forecast points are from other users.
+        e. Analyze and summarize all the information you have gathered.
+        f. Make sure that the reasoning is clear and concise and relevant to both the resolution criteria, the forecast question, and the information you have gathered.
+        g. Use the update_forecast tool to update the forecast with your new prediction and reasoning.
+    3. Once you have made a prediction for each forecast question you find interesting, you can stop.
+
+    Guidelines for predictions:
+    - You can only make predictions between 0 and 1. 
+    - You can only make predictions for forecasts that are in the list of forecasts you get from the get_forecasts tool.
+    - Provide detailed and clear reasoning for your predictions. Make sure that the reasoning is backed by the information you have gathered.
+    - Consider both historical data, like base rates and historical trends, and current information, like recent news.
+    """
     
     # MCP server configuration for forecasting
     mcp_servers = [
@@ -86,23 +93,8 @@ async def main():
     
     while True:
         try:
-            user_input = input("\nYou: ").strip()
             
-            if user_input.lower() in ['quit', 'exit', 'q']:
-                print("Goodbye!")
-                break
-            
-            if not user_input:
-                continue
-            
-            print("\nAgent is thinking...")
-            response = await agent.run_async(user_input)
-            
-            # Extract and display the final response
-            if response and response.content:
-                for block in response.content:
-                    if block.type == "text":
-                        print(f"\nAgent: {block.text}")
+            response = await agent.run_async("Run autonomous superforecasting workflow.")
             
         except KeyboardInterrupt:
             print("\nGoodbye!")
