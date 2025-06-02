@@ -5,6 +5,8 @@ import os
 from contextlib import AsyncExitStack
 from dataclasses import dataclass
 from typing import Any
+import logging
+from datetime import datetime
 
 from anthropic import Anthropic
 
@@ -13,12 +15,23 @@ from .utils.connections import setup_mcp_connections
 from .utils.history_util import MessageHistory
 from .utils.tool_util import execute_tools
 
+# Set up logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(f'agent_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log'),
+        logging.StreamHandler()
+    ]
+)
+
+logger = logging.getLogger('ForecastingAgent')
 
 @dataclass
 class ModelConfig:
     """Configuration settings for Claude model parameters."""
 
-    model: str = "claude-3-7-sonnet-20250219"
+    model: str = "claude-sonnet-4-20250514"
     max_tokens: int = 4096
     temperature: float = 1.0
     context_window_tokens: int = 180000
@@ -79,16 +92,21 @@ class Agent:
         while True:
             self.history.truncate()
             params = self._prepare_api_params()
-
+            
             response = self.client.messages.create(**params)
+            logger.info(f"Response: {response}")
+            logger.info(f"Input tokens: {response.usage.input_tokens}")
+            logger.info(f"Output tokens: {response.usage.output_tokens}")
             tool_calls = [
                 block for block in response.content if block.type == "tool_use"
             ]
-
+            logger.info(f"Tool calls: {tool_calls}")
+            print("Tool calls: ", tool_calls)
             if self.verbose:
                 for block in response.content:
                     if block.type == "text":
                         print(f"\n[{self.name}] Output: {block.text}")
+                        logger.info(f"Output: {block.text}")
                     elif block.type == "tool_use":
                         params_str = ", ".join(
                             [f"{k}={v}" for k, v in block.input.items()]
@@ -97,7 +115,7 @@ class Agent:
                             f"\n[{self.name}] Tool call: "
                             f"{block.name}({params_str})"
                         )
-
+                        logger.info(f"Tool call: {block.name}({params_str})")
             await self.history.add_message(
                 "assistant", response.content, response.usage
             )
@@ -111,12 +129,10 @@ class Agent:
                     for block in tool_results:
                         content = block.get('content', '')
                         print(
-                            f"\n[{self.name}] Tool result length: {len(content)}"
-                        )
-                        print(
                             f"\n[{self.name}] Tool result: "
                             f"{content}"
                         )
+                        logger.info(f"Tool result: {content}")
                 await self.history.add_message("user", tool_results)
             else:
                 return response
