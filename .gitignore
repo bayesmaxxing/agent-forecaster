@@ -1,0 +1,7 @@
+.python-version
+.env
+.venv
+.DS_Store
+
+# Agent logs
+*.log
