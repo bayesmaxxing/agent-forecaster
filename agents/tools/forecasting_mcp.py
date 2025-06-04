@@ -107,7 +107,7 @@ async def get_forecast_points(forecast_id: int) -> List[Dict[str, Any]]:
     """Get all the forecast points for a given forecast.
     @param forecast_id: The id of the forecast to get points for
     """
-    response = await get_request(url_postfix=f"forecast-points/{forecast_id}")
+    response = await post_request(url_postfix=f"forecast-points/user", data={"forecast_id": forecast_id, "user_id": 18})
     if not response:
         return []
     

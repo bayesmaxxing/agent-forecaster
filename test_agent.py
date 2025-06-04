@@ -11,6 +11,7 @@ Requirements:
 
 import asyncio
 import os
+from datetime import datetime
 from agents.agent import Agent, ModelConfig
 
 
@@ -46,6 +47,7 @@ async def main():
         max_tokens=4096,
         temperature=1.0
     )
+    current_date = datetime.now().strftime("%Y-%m-%d")
     
     # System prompt for forecasting agent
     system_prompt = """You are an autonomous superforecasting agent that makes predictions about future events. 
@@ -65,6 +67,8 @@ async def main():
     3. Once you have made a prediction for each forecast question you find interesting, you can stop.
 
     Guidelines for predictions:
+    - Choose forecasts that you have not forecasted (i.e created a forecast point for) within the last 3 days. The current date is {current_date}.
+    - Your user_id is 18. All other user_ids are forecast points from other users.
     - You can only make predictions between 0 and 1. 
     - You can only make predictions for forecasts that are in the list of forecasts you get from the get_forecasts tool.
     - Provide detailed and clear reasoning for your predictions. Make sure that the reasoning is backed by the information you have gathered.
