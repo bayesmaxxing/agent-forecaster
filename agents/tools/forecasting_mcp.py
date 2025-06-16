@@ -39,20 +39,6 @@ async def get_request(url_postfix: str) -> Any:
     async with httpx.AsyncClient() as client:
         response = await client.get(url, headers=headers)
         return response.json()
-    
-async def put_request(url_postfix: str, data: Any) -> Any:
-    """Make a PUT request to the forecaster API"""
-    token = await login()
-    url = f"{API_URL}/{url_postfix}"
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {token}"
-    }
-
-    async with httpx.AsyncClient() as client:
-        response = await client.put(url, json=data, headers=headers)
-        return response.json()
-
 
 async def login() -> Any:
     """Login to the forecaster API"""
