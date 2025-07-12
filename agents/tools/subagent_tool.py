@@ -1,7 +1,7 @@
 from typing import List, Optional
 from dataclasses import dataclass
 from agents.agent import Agent, ModelConfig
-from agents.tools import Tool
+from agents.types import Tool
 from agents.tools import QueryPerplexityTool, GetForecastsTool, GetForecastDataTool, GetForecastPointsTool, UpdateForecastTool
 
 @dataclass

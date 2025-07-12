@@ -10,10 +10,11 @@ from datetime import datetime
 
 from anthropic import Anthropic
 
-from .tools.base import Tool
-from .utils.connections import setup_mcp_connections
-from .utils.history_util import MessageHistory
-from .utils.tool_util import execute_tools
+from agents.types import Tool
+
+from agents.utils.history_util import MessageHistory
+from agents.utils.tool_util import execute_tools
+from agents.utils.connections import setup_mcp_connections
 
 # Set up logging
 LOGS_DIR = "logs"
@@ -105,7 +106,6 @@ class Agent:
                 block for block in response.content if block.type == "tool_use"
             ]
             logger.info(f"Tool calls: {tool_calls}")
-            print("Tool calls: ", tool_calls)
             if self.verbose:
                 for block in response.content:
                     if block.type == "text":

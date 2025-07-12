@@ -43,10 +43,11 @@ class CoordinatorAgent:
             name="CoordinatorAgent",
             system="""You are a coordinator agent that manages a team of specialized subagents.
             Your role is to:
-            1. Analyze problems and break them down into subtasks
-            2. Create specialized subagents for each subtask
-            3. Coordinate the subagents' work
-            4. Synthesize their results into a final solution
+            1. Think through the problem and create a plan for how to solve it.
+            2. Break the problem down into subtasks. 
+            3. Create specialized subagents for each subtask
+            4. Coordinate the subagents' work
+            5. Synthesize their results into a final solution
             
             You have access to the create_subagent tool to spawn new agents as needed.
             Choose the appropriate model and tools for each subagent based on their task.
