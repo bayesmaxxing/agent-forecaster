@@ -63,14 +63,11 @@ async def authenticated_post_request(url_postfix: str, data: Any) -> Any:
         return response.json()
 
 @mcp.tool(name="get_forecasts")
-async def get_forecasts(category: Optional[str] = None, list_type: str = "open") -> List[Dict[str, Any]]:
-    """Get a list of forecasts from a given category and list type (open, closed, all)"""
-    payload = {"list_type": list_type}
+async def get_forecasts() -> List[Dict[str, Any]]:
+    """Get a list of forecasts that have not been forecasted or where the last forecast was more than 14 days ago."""
     
-    if category:
-        payload["category"] = category
     
-    response = await post_request(url_postfix="forecasts", data=payload)
+    response = await get_request(url_postfix="forecasts/stale-and-new/18")
     if not response:
         return []
         

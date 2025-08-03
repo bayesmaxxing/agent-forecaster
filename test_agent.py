@@ -13,6 +13,7 @@ import asyncio
 import os
 from datetime import datetime
 from agents.agent import Agent, ModelConfig
+from agents.tools import ThinkTool
 
 def setup_environment():
     """Set up environment variables for testing."""
@@ -49,7 +50,7 @@ async def main():
     current_date = datetime.now().strftime("%Y-%m-%d")
     
     # System prompt for forecasting agent
-    system_prompt = """You are an autonomous superforecasting agent that makes predictions about future events. 
+    system_prompt = f"""You are an autonomous superforecasting agent that makes predictions about future events. 
     Your goal is to make find interesting questions to forecast, gather relevant information, and make accurate and rational predictions given the available information.
     As a superforecaster, you are expected to make predictions that are more accurate and well-reasoned than the average prediction. 
 
@@ -82,6 +83,8 @@ async def main():
             "cwd": os.getcwd()
         }
     ]
+
+    think_tool = ThinkTool()
     
     # Create the agent
     agent = Agent(
@@ -89,6 +92,7 @@ async def main():
         system=system_prompt,
         config=config,
         mcp_servers=mcp_servers,
+        tools = [think_tool],
         verbose=True
     )
     
