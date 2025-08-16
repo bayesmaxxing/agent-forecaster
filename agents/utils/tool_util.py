@@ -8,18 +8,31 @@ async def _execute_single_tool(
     call: Any, tool_dict: dict[str, Any]
 ) -> dict[str, Any]:
     """Execute a single tool and handle errors."""
-    response = {"type": "tool_result", "tool_use_id": call.id}
+    # Handle OpenAI tool call format
+    tool_call_id = call.id
+    tool_name = call.function.name
+    
+    # Parse arguments (they come as a JSON string)
+    import json
+    try:
+        tool_args = json.loads(call.function.arguments)
+    except json.JSONDecodeError:
+        tool_args = {}
+    
+    response = {
+        "tool_call_id": tool_call_id,
+        "role": "tool"
+    }
 
     try:
         # Execute the tool directly
-        result = await tool_dict[call.name].execute(**call.input)
+        result = await tool_dict[tool_name].execute(**tool_args)
         
-        # Convert to string for Claude API
+        # Convert to string for API
         str_result = str(result)
-        
         response["content"] = str_result
     except KeyError:
-        response["content"] = f"Tool '{call.name}' not found"
+        response["content"] = f"Tool '{tool_name}' not found"
         response["is_error"] = True
     except Exception as e:
         response["content"] = f"Error executing tool: {str(e)}"

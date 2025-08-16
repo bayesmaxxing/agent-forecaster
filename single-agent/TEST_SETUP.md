@@ -16,9 +16,9 @@ This guide helps you test the forecasting agent in a terminal environment.
    nano agents/tools/.env
    ```
    
-   At minimum, set your Anthropic API key:
+   At minimum, set your OpenRouter API key:
    ```
-   ANTHROPIC_API_KEY=your-actual-api-key-here
+   OPENROUTER_API_KEY=your-actual-api-key-here
    ```
 
 ## Running the Test
@@ -58,7 +58,7 @@ The agent has access to these forecasting tools:
 ## Troubleshooting
 
 - **Import errors**: Make sure you've run `uv sync` to install dependencies
-- **API errors**: Verify your ANTHROPIC_API_KEY is set correctly
+- **API errors**: Verify your OPENROUTER_API_KEY is set correctly
 - **MCP connection issues**: The forecasting MCP will run automatically when the agent starts
 - **Forecasting API errors**: These are expected if you don't have the forecasting service running
 

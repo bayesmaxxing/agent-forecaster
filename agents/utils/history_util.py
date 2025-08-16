@@ -25,17 +25,11 @@ class MessageHistory:
         )  # List of (input_tokens, output_tokens) tuples
         self.client = client
 
-        # set initial total tokens to system prompt
+        # set initial total tokens to system prompt (rough estimate for OpenAI)
         try:
-            system_token = (
-                self.client.messages.count_tokens(
-                    model=self.model,
-                    system=self.system,
-                    messages=[{"role": "user", "content": "test"}],
-                ).input_tokens
-                - 1
-            )
-
+            # OpenAI doesn't have a token counting API in the same way
+            # Use rough estimate: ~4 chars per token
+            system_token = len(self.system) / 4
         except Exception:
             system_token = len(self.system) / 4
 
@@ -44,23 +38,56 @@ class MessageHistory:
     async def add_message(
         self,
         role: str,
-        content: str | list[dict[str, Any]],
+        content: str | list[dict[str, Any]] | Any,
         usage: Any | None = None,
     ):
         """Add a message to the history and track token usage."""
-        if isinstance(content, str):
-            content = [{"type": "text", "text": content}]
+        # Handle OpenAI message format
+        if hasattr(content, 'content') and hasattr(content, 'tool_calls'):
+            # This is an OpenAI ChatCompletion message
+            message = {
+                "role": role,
+                "content": content.content
+            }
+            if content.tool_calls:
+                message["tool_calls"] = [
+                    {
+                        "id": tc.id,
+                        "type": "function",
+                        "function": {
+                            "name": tc.function.name,
+                            "arguments": tc.function.arguments
+                        }
+                    }
+                    for tc in content.tool_calls
+                ]
+        elif isinstance(content, list) and all(isinstance(item, dict) and 'tool_call_id' in item for item in content):
+            # This is tool results
+            message = {
+                "role": "tool",
+                "content": str(content)
+            }
+        elif isinstance(content, str):
+            message = {"role": role, "content": content}
+        elif isinstance(content, list):
+            # Handle legacy format or tool results
+            if all(isinstance(item, dict) and 'content' in item for item in content):
+                # Tool results format
+                message = {
+                    "role": "tool", 
+                    "content": str([item['content'] for item in content])
+                }
+            else:
+                message = {"role": role, "content": str(content)}
+        else:
+            message = {"role": role, "content": str(content)}
 
-        message = {"role": role, "content": content}
         self.messages.append(message)
 
         if role == "assistant" and usage:
-            total_input = (
-                usage.input_tokens
-                + getattr(usage, "cache_read_input_tokens", 0)
-                + getattr(usage, "cache_creation_input_tokens", 0)
-            )
-            output_tokens = usage.output_tokens
+            # OpenAI usage format
+            total_input = getattr(usage, 'prompt_tokens', 0)
+            output_tokens = getattr(usage, 'completion_tokens', 0)
 
             current_turn_input = total_input - self.total_tokens
             self.message_tokens.append((current_turn_input, output_tokens))
@@ -72,14 +99,10 @@ class MessageHistory:
             return
 
         TRUNCATION_NOTICE_TOKENS = 25
+        # Simplified truncation message for OpenAI format
         TRUNCATION_MESSAGE = {
             "role": "user",
-            "content": [
-                {
-                    "type": "text",
-                    "text": "[Earlier history has been truncated.]",
-                }
-            ],
+            "content": "[Earlier history has been truncated.]"
         }
 
         def remove_message_pair():
@@ -101,7 +124,10 @@ class MessageHistory:
                 original_input_tokens, original_output_tokens = (
                     self.message_tokens[0]
                 )
-                self.messages[0] = TRUNCATION_MESSAGE
+                self.messages[0] = {
+                    "role": "user",
+                    "content": "[Earlier history has been truncated.]"
+                }
                 self.message_tokens[0] = (
                     TRUNCATION_NOTICE_TOKENS,
                     original_output_tokens,
@@ -111,14 +137,9 @@ class MessageHistory:
                 )
 
     def format_for_api(self) -> list[dict[str, Any]]:
-        """Format messages for Claude API with optional caching."""
-        result = [
+        """Format messages for OpenAI API."""
+        # OpenAI format is simpler, just return the messages as-is
+        # No caching control needed as OpenRouter/OpenAI handles this
+        return [
             {"role": m["role"], "content": m["content"]} for m in self.messages
         ]
-
-        if self.enable_caching and self.messages:
-            result[-1]["content"] = [
-                {**block, "cache_control": {"type": "ephemeral"}}
-                for block in self.messages[-1]["content"]
-            ]
-        return result

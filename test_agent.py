@@ -5,7 +5,7 @@ Usage:
     uv run python test_agent.py
 
 Requirements:
-    - Set ANTHROPIC_API_KEY environment variable
+    - Set OPENROUTER_API_KEY environment variable
     - Optional: Set API_URL, BOT_USERNAME, BOT_PASSWORD for forecasting API
 """
 
@@ -17,10 +17,10 @@ from agents.tools import ThinkTool
 
 def setup_environment():
     """Set up environment variables for testing."""
-    # Check if ANTHROPIC_API_KEY is set
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        print("Error: ANTHROPIC_API_KEY environment variable is required")
-        print("Please set it with: export ANTHROPIC_API_KEY=your_api_key")
+    # Check if OPENROUTER_API_KEY is set
+    if not os.environ.get("OPENROUTER_API_KEY"):
+        print("Error: OPENROUTER_API_KEY environment variable is required")
+        print("Please set it with: export OPENROUTER_API_KEY=your_api_key")
         return False
     
     # Set default values for forecasting MCP if not already set
@@ -43,7 +43,7 @@ async def main():
     
     # Configure the agent
     config = ModelConfig(
-        model="claude-opus-4-20250514",
+        model="anthropic/claude-3-opus",
         max_tokens=4096,
         temperature=1.0
     )
