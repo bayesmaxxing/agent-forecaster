@@ -10,11 +10,10 @@ from datetime import datetime
 
 from openai import OpenAI
 
-from agents.types import Tool
-
-from agents.utils.history_util import MessageHistory
-from agents.utils.tool_util import execute_tools
-from agents.utils.connections import setup_mcp_connections
+from .tools.base import Tool
+from .utils.history_util import MessageHistory
+from .utils.tool_util import execute_tools
+from .utils.connections import setup_mcp_connections
 
 # Set up logging
 LOGS_DIR = "logs"
@@ -36,7 +35,7 @@ logger = logging.getLogger('ForecastingAgent')
 class ModelConfig:
     """Configuration settings for OpenRouter model parameters."""
 
-    model: str = "anthropic/claude-3.5-sonnet"
+    model: str = "openrouter/sonoma-dusk-alpha"
     max_tokens: int = 4096
     temperature: float = 1.0
     context_window_tokens: int = 180000
@@ -108,22 +107,15 @@ class Agent:
             
             response = self.client.chat.completions.create(**params)
             logger.info(f"Response: {response}")
-            logger.info(f"Input tokens: {response.usage.prompt_tokens}")
-            logger.info(f"Output tokens: {response.usage.completion_tokens}")
             
             message = response.choices[0].message
             tool_calls = message.tool_calls or []
             logger.info(f"Tool calls: {tool_calls}")
             if self.verbose:
                 if message.content:
-                    print(f"\n[{self.name}] Output: {message.content}")
                     logger.info(f"Output: {message.content}")
                 
                 for tool_call in tool_calls:
-                    print(
-                        f"\n[{self.name}] Tool call: "
-                        f"{tool_call.function.name}({tool_call.function.arguments})"
-                    )
                     logger.info(f"Tool call: {tool_call.function.name}({tool_call.function.arguments})")
             
             await self.history.add_message(
@@ -138,10 +130,6 @@ class Agent:
                 if self.verbose:
                     for block in tool_results:
                         content = block.get('content', '')
-                        print(
-                            f"\n[{self.name}] Tool result: "
-                            f"{content}"
-                        )
                         logger.info(f"Tool result: {content}")
                 await self.history.add_message("user", tool_results)
             else:
@@ -164,3 +152,16 @@ class Agent:
     def run(self, user_input: str) -> list[dict[str, Any]]:
         """Run agent synchronously"""
         return asyncio.run(self.run_async(user_input))
+
+if __name__ == "__main__":
+    agent = Agent(
+        name="TestAgent",
+        system="You are a test agent.",
+        tools=[],
+        mcp_servers=[],
+        config=ModelConfig(),
+        verbose=True
+    )
+
+    response = agent.run("What is the weather in Tokyo?")
+    print(response)
