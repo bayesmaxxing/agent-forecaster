@@ -1,18 +1,20 @@
-from typing import List, Optional
+from typing import List, Optional, TYPE_CHECKING
 from dataclasses import dataclass
-from agents.agent import Agent, ModelConfig
 from agents.types import Tool
 from agents.tools import QueryPerplexityTool, GetForecastsTool, GetForecastDataTool, GetForecastPointsTool, UpdateForecastTool
+
+if TYPE_CHECKING:
+    from agents.agent import Agent, ModelConfig
 
 @dataclass
 class SubagentConfig:
     name: str
     system_prompt: str
     tools: List[Tool]
-    model_config: ModelConfig
+    model_config: "ModelConfig"
 
 class SubagentManagerTool(Tool):
-    def __init__(self, subagents: dict[str, Agent]):
+    def __init__(self, subagents: dict[str, "Agent"]):
         super().__init__(
             name="subagent_manager",
             description="Manage subagents with specific capabilities and goals",
@@ -50,11 +52,12 @@ class SubagentManagerTool(Tool):
         self.subagents = subagents
         self.available_tools = {
             "query_perplexity": QueryPerplexityTool(),
-            "get_forecasts": GetForecastsTool(),
-            "get_forecast_data": GetForecastDataTool(),
-            "get_forecast_points": GetForecastPointsTool(),
-            "update_forecast": UpdateForecastTool(),
-            "memory": SharedMemoryTool(), #TODO: create a shared memory tool that subagents can use to share information with the orchestrator and the other subagents.
+            # Note: These tools need model parameter - will be added in _create_subagent method
+            # "get_forecasts": GetForecastsTool(),
+            # "get_forecast_data": GetForecastDataTool(), 
+            # "get_forecast_points": GetForecastPointsTool(),
+            # "update_forecast": UpdateForecastTool(),
+            # "memory": SharedMemoryTool(), #TODO: create a shared memory tool that subagents can use to share information with the orchestrator and the other subagents.
         }
 
     async def execute(self, action: str, **kwargs) -> str:
@@ -70,19 +73,29 @@ class SubagentManagerTool(Tool):
             return f"Error: Invalid action '{action}'"
         
     async def _create_subagent(self, name: str, system_prompt: str, tools: List[Tool], model: str) -> str:
+        # Import here to avoid circular imports
+        from agents.agent import Agent, ModelConfig
+        
         if name in self.subagents:
             return f"Error: Subagent '{name}' already exists"
         
         # Get the requested tools
         agent_tools = []
         for tool_name in tools:
-            if tool_name in self.available_tools:
-                agent_tools.append(self.available_tools[tool_name])
+            if tool_name == "query_perplexity":
+                agent_tools.append(QueryPerplexityTool())
+            elif tool_name == "get_forecasts":
+                agent_tools.append(GetForecastsTool(model=model))
+            elif tool_name == "get_forecast_data":
+                agent_tools.append(GetForecastDataTool())
+            elif tool_name == "get_forecast_points":
+                agent_tools.append(GetForecastPointsTool(model=model))
+            elif tool_name == "update_forecast":
+                agent_tools.append(UpdateForecastTool(model=model))
             else:
                 return f"Error: Tool '{tool_name}' not available"
             
-        if "memory" not in agent_tools:
-            agent_tools.append(self.available_tools["memory"])
+        # Note: Shared memory tool not yet implemented
             
         self.subagents[name] = Agent(
             name=name,

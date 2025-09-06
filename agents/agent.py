@@ -1,4 +1,4 @@
-"""Agent implementation with Claude API and tools."""
+"""Agent implementation with OpenAI SDK and tools."""
 
 import asyncio
 import os
@@ -8,13 +8,12 @@ from typing import Any
 import logging
 from datetime import datetime
 
-from anthropic import Anthropic
+from openai import OpenAI
 
-from agents.types import Tool
-
-from agents.utils.history_util import MessageHistory
-from agents.utils.tool_util import execute_tools
-from agents.utils.connections import setup_mcp_connections
+from .tools.base import Tool
+from .utils.history_util import MessageHistory
+from .utils.tool_util import execute_tools
+from .utils.connections import setup_mcp_connections
 
 # Set up logging
 LOGS_DIR = "logs"
@@ -34,16 +33,16 @@ logger = logging.getLogger('ForecastingAgent')
 
 @dataclass
 class ModelConfig:
-    """Configuration settings for Claude model parameters."""
+    """Configuration settings for OpenRouter model parameters."""
 
-    model: str = "claude-sonnet-4-20250514"
+    model: str = "openrouter/sonoma-dusk-alpha"
     max_tokens: int = 4096
     temperature: float = 1.0
     context_window_tokens: int = 180000
 
 
 class Agent:
-    """Claude-powered agent with tool use capabilities."""
+    """OpenRouter-powered agent with tool use capabilities."""
 
     def __init__(
         self,
@@ -53,7 +52,7 @@ class Agent:
         mcp_servers: list[dict[str, Any]] | None = None,
         config: ModelConfig | None = None,
         verbose: bool = False,
-        client: Anthropic | None = None,
+        client: OpenAI | None = None,
     ):
         self.name = name
         self.system = system
@@ -61,8 +60,9 @@ class Agent:
         self.tools = list(tools or [])
         self.config = config or ModelConfig()
         self.mcp_servers = mcp_servers or []
-        self.client = client or Anthropic(
-            api_key=os.environ.get("ANTHROPIC_API_KEY", "")
+        self.client = client or OpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=os.environ.get("OPENROUTER_API_KEY", "")
         )
         self.history = MessageHistory(
             model=self.config.model,
@@ -75,16 +75,23 @@ class Agent:
             print(f"\n[{self.name}] Agent initialized")
 
     def _prepare_api_params(self) -> dict[str, Any]:
-        """Prepare parameters for Claude API call."""
-        # Use system prompt directly without prefixing
-        return {
+        """Prepare parameters for OpenAI API call."""
+        messages = self.history.format_for_api()
+        # Add system message at the beginning if not already present
+        if not messages or messages[0].get("role") != "system":
+            messages.insert(0, {"role": "system", "content": self.system})
+        
+        params = {
             "model": self.config.model,
             "max_tokens": self.config.max_tokens,
             "temperature": self.config.temperature,
-            "system": self.system,
-            "messages": self.history.format_for_api(),
-            "tools": [tool.to_dict() for tool in self.tools],
+            "messages": messages,
         }
+        
+        if self.tools:
+            params["tools"] = [tool.to_dict() for tool in self.tools]
+        
+        return params
 
     async def _agent_loop(self, user_input: str) -> list[dict[str, Any]]:
         """Process user input and handle tool calls in a loop"""
@@ -98,30 +105,21 @@ class Agent:
             self.history.truncate()
             params = self._prepare_api_params()
             
-            response = self.client.messages.create(**params)
+            response = self.client.chat.completions.create(**params)
             logger.info(f"Response: {response}")
-            logger.info(f"Input tokens: {response.usage.input_tokens}")
-            logger.info(f"Output tokens: {response.usage.output_tokens}")
-            tool_calls = [
-                block for block in response.content if block.type == "tool_use"
-            ]
+            
+            message = response.choices[0].message
+            tool_calls = message.tool_calls or []
             logger.info(f"Tool calls: {tool_calls}")
             if self.verbose:
-                for block in response.content:
-                    if block.type == "text":
-                        print(f"\n[{self.name}] Output: {block.text}")
-                        logger.info(f"Output: {block.text}")
-                    elif block.type == "tool_use":
-                        params_str = ", ".join(
-                            [f"{k}={v}" for k, v in block.input.items()]
-                        )
-                        print(
-                            f"\n[{self.name}] Tool call: "
-                            f"{block.name}({params_str})"
-                        )
-                        logger.info(f"Tool call: {block.name}({params_str})")
+                if message.content:
+                    logger.info(f"Output: {message.content}")
+                
+                for tool_call in tool_calls:
+                    logger.info(f"Tool call: {tool_call.function.name}({tool_call.function.arguments})")
+            
             await self.history.add_message(
-                "assistant", response.content, response.usage
+                "assistant", message, response.usage
             )
 
             if tool_calls:
@@ -132,14 +130,10 @@ class Agent:
                 if self.verbose:
                     for block in tool_results:
                         content = block.get('content', '')
-                        print(
-                            f"\n[{self.name}] Tool result: "
-                            f"{content}"
-                        )
                         logger.info(f"Tool result: {content}")
                 await self.history.add_message("user", tool_results)
             else:
-                return response
+                return message
 
     async def run_async(self, user_input: str) -> list[dict[str, Any]]:
         """Run agent with MCP tools asynchronously."""
@@ -158,3 +152,16 @@ class Agent:
     def run(self, user_input: str) -> list[dict[str, Any]]:
         """Run agent synchronously"""
         return asyncio.run(self.run_async(user_input))
+
+if __name__ == "__main__":
+    agent = Agent(
+        name="TestAgent",
+        system="You are a test agent.",
+        tools=[],
+        mcp_servers=[],
+        config=ModelConfig(),
+        verbose=True
+    )
+
+    response = agent.run("What is the weather in Tokyo?")
+    print(response)
