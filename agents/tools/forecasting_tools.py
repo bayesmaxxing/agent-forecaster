@@ -87,11 +87,11 @@ class GetForecastPointsTool(Tool):
             
     async def execute(self, forecast_id: int):
         """Execute the forecasting tools."""
-        response = await post_request(url_postfix=f"forecast-points/user", data={"forecast_id": forecast_id, "user_id": self.user_id})
-        if not response:
-            return {"success": False, "error": "Failed to retrieve forecast points"}
-        
-        return {"success": True, "data": response}
+        try:
+            response = await post_request(url_postfix=f"forecast-points/user", data={"forecast_id": forecast_id, "user_id": self.user_id})
+            return {"success": True, "data": response}
+        except Exception as e:
+            return {"success": False, "error": f"Failed to retrieve forecast points: {str(e)}"}
     
 class UpdateForecastTool(Tool):
     def __init__(self, model: str):
@@ -124,8 +124,8 @@ class UpdateForecastTool(Tool):
             self.user_name = os.getenv("OPENAI_BOT_USERNAME")
             self.user_password = os.getenv("OPENAI_BOT_PASSWORD")
         elif self.model.lower() == "grok":
-            self.user_name = os.getenv("X_AI_BOT_USERNAME")
-            self.user_password = os.getenv("X_AI_BOT_PASSWORD")
+            self.user_name = os.getenv("GROK_BOT_USERNAME")
+            self.user_password = os.getenv("GROK_BOT_PASSWORD")
         elif self.model.lower() == "gemini":
             self.user_name = os.getenv("GEMINI_BOT_USERNAME")
             self.user_password = os.getenv("GEMINI_BOT_PASSWORD")
@@ -144,8 +144,8 @@ class UpdateForecastTool(Tool):
             "reason": reason,
             "user_id": 0
         }
-
-        response = await authenticated_post_request(url_postfix=f"forecast-points", data=payload, user_name=self.user_name, user_password=self.user_password)
+        print(self.user_name, self.user_password)
+        response = await authenticated_post_request(url_postfix=f"api/forecast-points", data=payload, user_name=self.user_name, user_password=self.user_password)
         if not response:
             return {"success": False, "error": "Failed to update forecast"}
         

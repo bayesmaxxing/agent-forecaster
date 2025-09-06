@@ -47,7 +47,7 @@ async def get_request(url_postfix: str) -> Any:
     
 async def put_request(url_postfix: str, data: Any, user_name: str, user_password: str) -> Any:
     """Make a PUT request to the forecaster API"""
-    token = await login(user_name, user_password)
+    token = await login(user_name=user_name, user_password=user_password)
     url = f"{API_URL}/{url_postfix}"
     headers = {
         "Content-Type": "application/json",
@@ -62,15 +62,15 @@ async def put_request(url_postfix: str, data: Any, user_name: str, user_password
 async def login(user_name: str, user_password: str) -> Any:
     """Login to the forecaster API"""
     data = {
+        "username": user_name,
         "password": user_password,
-        "username": user_name
     }
-    response = await post_request(url_postfix="/users/login", data=data)
+    response = await post_request(url_postfix="users/login", data=data)
     return response["token"]
 
 async def authenticated_post_request(url_postfix: str, data: Any, user_name: str, user_password: str) -> Any:
     """Make a POST request to the forecaster API with authentication"""
-    token = await login(user_name, user_password)
+    token = await login(user_name=user_name, user_password=user_password)
     url = f"{API_URL}/{url_postfix}"
     headers = {
         "Content-Type": "application/json",
