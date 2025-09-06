@@ -62,11 +62,15 @@ class MessageHistory:
                     for tc in content.tool_calls
                 ]
         elif isinstance(content, list) and all(isinstance(item, dict) and 'tool_call_id' in item for item in content):
-            # This is tool results
-            message = {
-                "role": "tool",
-                "content": str(content)
-            }
+            # This is tool results - add each tool result as a separate message
+            for item in content:
+                message = {
+                    "role": "tool",
+                    "content": item.get('content', ''),
+                    "tool_call_id": item.get('tool_call_id', '')
+                }
+                self.messages.append(message)
+            return  # Don't add the list as a single message
         elif isinstance(content, str):
             message = {"role": role, "content": content}
         elif isinstance(content, list):
@@ -138,8 +142,15 @@ class MessageHistory:
 
     def format_for_api(self) -> list[dict[str, Any]]:
         """Format messages for OpenAI API."""
-        # OpenAI format is simpler, just return the messages as-is
-        # No caching control needed as OpenRouter/OpenAI handles this
-        return [
-            {"role": m["role"], "content": m["content"]} for m in self.messages
-        ]
+        # Include all fields from messages, not just role and content
+        formatted_messages = []
+        for m in self.messages:
+            message = {"role": m["role"], "content": m["content"]}
+            # Include tool_calls if present
+            if "tool_calls" in m:
+                message["tool_calls"] = m["tool_calls"]
+            # Include tool_call_id if present (for tool messages)
+            if "tool_call_id" in m:
+                message["tool_call_id"] = m["tool_call_id"]
+            formatted_messages.append(message)
+        return formatted_messages
