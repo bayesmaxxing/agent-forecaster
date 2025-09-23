@@ -128,10 +128,7 @@ class MessageHistory:
                 original_input_tokens, original_output_tokens = (
                     self.message_tokens[0]
                 )
-                self.messages[0] = {
-                    "role": "user",
-                    "content": "[Earlier history has been truncated.]"
-                }
+                self.messages[0] = TRUNCATION_MESSAGE
                 self.message_tokens[0] = (
                     TRUNCATION_NOTICE_TOKENS,
                     original_output_tokens,
