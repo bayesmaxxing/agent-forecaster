@@ -14,7 +14,7 @@ import os
 import argparse
 from datetime import datetime
 from agents.agent import Agent, ModelConfig
-from agents.tools import ThinkTool, QueryPerplexityTool
+from agents.tools import ThinkTool, QueryPerplexityTool, RequestFeedbackTool
 from agents.tools.forecasting_tools import GetForecastsTool, GetForecastDataTool, GetForecastPointsTool, UpdateForecastTool
 
 def setup_environment():
@@ -66,14 +66,15 @@ async def main(model: str, verbose: bool):
     get_forecast_points_tool = GetForecastPointsTool(model=model)
     update_forecast_tool = UpdateForecastTool(model=model)
     query_perplexity_tool = QueryPerplexityTool()
-    
+    request_feedback_tool = RequestFeedbackTool()
+
     # Create the agent
     agent = Agent(
         name="ForecastingAgent",
         system=system_prompt,
         config=config,
         mcp_servers=[],
-        tools = [think_tool, get_forecasts_tool, get_forecast_data_tool, get_forecast_points_tool, update_forecast_tool, query_perplexity_tool],
+        tools = [think_tool, get_forecasts_tool, get_forecast_data_tool, get_forecast_points_tool, update_forecast_tool, query_perplexity_tool, request_feedback_tool],
         verbose=verbose
     )
     
@@ -82,7 +83,7 @@ async def main(model: str, verbose: bool):
     while True:
         try:
             
-            response = await agent.run_async("Run autonomous superforecasting workflow.")
+            response = await agent.run_async(user_input="Go ahead and forecast!")
             
         except KeyboardInterrupt:
             print("\nGoodbye!")
