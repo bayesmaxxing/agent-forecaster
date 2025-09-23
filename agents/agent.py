@@ -35,10 +35,10 @@ logger = logging.getLogger('ForecastingAgent')
 class ModelConfig:
     """Configuration settings for OpenRouter model parameters."""
 
-    model: str = "openrouter/sonoma-dusk-alpha"
-    max_tokens: int = 4096
+    model: str = "openai/gpt-5"
+    max_tokens: int = 8192
     temperature: float = 1.0
-    context_window_tokens: int = 180000
+    context_window_tokens: int = 80000
 
 
 class Agent:
