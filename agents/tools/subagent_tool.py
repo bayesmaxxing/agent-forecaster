@@ -8,7 +8,6 @@ from agents.tools.shared_memory_tool import SharedMemoryTool
 if TYPE_CHECKING:
     from agents.subagent import Subagent, SubagentConfig
 
-# Remove duplicate SubagentConfig - now imported from subagent module
 
 class SubagentManagerTool(Tool):
     def __init__(self, subagents: dict[str, "Subagent"]):
@@ -52,13 +51,6 @@ class SubagentManagerTool(Tool):
                         "default": 10,
                         "description": "Maximum number of tool call iterations (optional for create action)"
                     },
-                    "max_tokens": {
-                        "type": "integer",
-                        "minimum": 1000,
-                        "maximum": 100000,
-                        "default": 50000,
-                        "description": "Maximum total token usage (optional for create action)"
-                    },
                     "termination_tools": {
                         "type": "array",
                         "items": {"type": "string"},
@@ -66,7 +58,7 @@ class SubagentManagerTool(Tool):
                     },
                     "require_termination_tool": {
                         "type": "boolean",
-                        "default": false,
+                        "default": False,
                         "description": "Whether a termination tool must be called for successful completion (optional for create action)"
                     }
                 },
@@ -97,7 +89,6 @@ class SubagentManagerTool(Tool):
         tools: List[str],
         model: str,
         max_iterations: int = 10,
-        max_tokens: int = 50000,
         termination_tools: List[str] = None,
         require_termination_tool: bool = False,
         **kwargs
@@ -145,7 +136,7 @@ class SubagentManagerTool(Tool):
             max_tokens=4096,
             temperature=1.0,
             max_iterations=max_iterations,
-            max_total_tokens=max_tokens,
+            max_total_tokens=4096,
             termination_tools=termination_tools,
             require_termination_tool=require_termination_tool
         )
@@ -158,7 +149,7 @@ class SubagentManagerTool(Tool):
             verbose=True
         )
 
-        return f"Successfully created subagent '{name}' with {len(agent_tools)} tools (max_iterations: {max_iterations}, max_tokens: {max_tokens}, termination_tools: {termination_tools})"
+        return f"Successfully created subagent '{name}' with {len(agent_tools)} tools (max_iterations: {max_iterations}, termination_tools: {termination_tools})"
         
     async def _run_subagent(self, name: str, task_input: str, **kwargs) -> str:
         if name not in self.subagents:

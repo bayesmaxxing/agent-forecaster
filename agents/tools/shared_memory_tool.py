@@ -255,7 +255,7 @@ class SharedMemoryManagerTool(Tool):
                 "properties": {
                     "action": {
                         "type": "string",
-                        "enum": ["export_task", "clear_task", "get_task_summary", "cleanup_old"],
+                        "enum": ["export_task", "clear_task", "get_task_summary"],
                         "description": "Administrative action to perform"
                     },
                     "target_task_id": {
@@ -266,12 +266,6 @@ class SharedMemoryManagerTool(Tool):
                         "type": "string",
                         "description": "Output file path (required for export_task action)"
                     },
-                    "days_old": {
-                        "type": "integer",
-                        "minimum": 1,
-                        "default": 30,
-                        "description": "Age threshold in days (for cleanup_old action)"
-                    }
                 },
                 "required": ["action"]
             }
@@ -287,8 +281,6 @@ class SharedMemoryManagerTool(Tool):
                 return await self._clear_task(**kwargs)
             elif action == "get_task_summary":
                 return await self._get_task_summary(**kwargs)
-            elif action == "cleanup_old":
-                return await self._cleanup_old(**kwargs)
             else:
                 return f"Error: Invalid action '{action}'"
         except Exception as e:
