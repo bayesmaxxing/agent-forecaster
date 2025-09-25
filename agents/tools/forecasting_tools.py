@@ -25,6 +25,8 @@ class GetForecastsTool(Tool):
             self.user_id = 20
         elif self.model.lower() == "gemini":
             self.user_id = 21
+        elif self.model.lower() == "multi":
+            self.user_id = 22
         else: 
             raise ValueError("Invalid model")
 
@@ -82,6 +84,8 @@ class GetForecastPointsTool(Tool):
             self.user_id = 20
         elif self.model.lower() == "gemini":
             self.user_id = 21
+        elif self.model.lower() == "multi":
+            self.user_id = 22
         else: 
             raise ValueError("Invalid model")
             
@@ -129,6 +133,9 @@ class UpdateForecastTool(Tool):
         elif self.model.lower() == "gemini":
             self.user_name = os.getenv("GEMINI_BOT_USERNAME")
             self.user_password = os.getenv("GEMINI_BOT_PASSWORD")
+        elif self.model.lower() == "multi":
+            self.user_name = os.getenv("MULTI_BOT_USERNAME")
+            self.user_password = os.getenv("MULTI_BOT_PASSWORD")
         else:
             raise ValueError("Invalid model")
             

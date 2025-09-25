@@ -5,7 +5,7 @@ from .think import ThinkTool
 from .information_tools import QueryPerplexityTool, RequestFeedbackTool
 from .forecasting_tools import GetForecastsTool, GetForecastDataTool, GetForecastPointsTool, UpdateForecastTool
 from .subagent_tool import SubagentManagerTool
-from .shared_memory_tool import SharedMemoryTool
+from .shared_memory_tool import SharedMemoryTool, SharedMemoryManagerTool
 
 __all__ = [
     "Tool",
@@ -17,5 +17,6 @@ __all__ = [
     "GetForecastPointsTool",
     "UpdateForecastTool",
     "SharedMemoryTool",
-    "SubagentManagerTool"
+    "SubagentManagerTool",
+    "SharedMemoryManagerTool"
 ]

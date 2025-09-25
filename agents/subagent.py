@@ -19,7 +19,7 @@ from .utils.connections import setup_mcp_connections
 class SubagentConfig:
     """Configuration settings for Subagent with execution limits."""
 
-    model: str = "openai/gpt-5"
+    model: str = "grok/grok-4-fast:free"
     max_tokens: int = 8192
     temperature: float = 1.0
     context_window_tokens: int = 80000
@@ -27,8 +27,23 @@ class SubagentConfig:
     max_total_tokens: int = 50000  # Maximum total token usage
     termination_tools: list[str] | None = None  # Tools that end execution when called
     require_termination_tool: bool = False  # Whether termination tool must be called
+    agent_id: str = "subagent"
 
 
+LOGS_DIR = "sub_agent_logs"
+os.makedirs(LOGS_DIR, exist_ok=True)
+log_filename = os.path.join(LOGS_DIR, f'subagent_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log')
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(log_filename),
+        logging.StreamHandler()
+    ]
+)
+
+logger = logging.getLogger('SubagentLogger')
 class Subagent:
     """OpenRouter-powered agent with tool use capabilities."""
 
@@ -40,12 +55,14 @@ class Subagent:
         config: SubagentConfig | None = None,
         verbose: bool = False,
         client: OpenAI | None = None,
+        agent_id: str = "subagent",
     ):
         self.name = name
         self.system = system
         self.verbose = verbose
         self.tools = list(tools or [])
         self.config = config or SubagentConfig()
+        self.agent_id = agent_id
         self.client = client or OpenAI(
             base_url="https://openrouter.ai/api/v1",
             api_key=os.environ.get("OPENROUTER_API_KEY", "")
@@ -58,7 +75,7 @@ class Subagent:
         )
 
         if self.verbose:
-            print(f"\n[{self.name}] Subagent initialized")
+            logger.info(f"\n[{self.name}] Subagent initialized")
 
         # Execution tracking
         self.iteration_count = 0
@@ -108,7 +125,7 @@ class Subagent:
     async def _agent_loop(self, user_input: str) -> dict[str, Any]:
         """Process user input and handle tool calls in a loop with termination conditions."""
         if self.verbose:
-            print(f"\n[{self.name}] Received: {user_input}")
+            logger.info(f"\n[{self.name}] Received: {user_input}")
         await self.history.add_message("user", user_input, None)
 
         tool_dict = {tool.name: tool for tool in self.tools}
@@ -119,7 +136,7 @@ class Subagent:
             if should_terminate:
                 self.termination_reason = reason
                 if self.verbose:
-                    print(f"[{self.name}] Terminating: {reason}")
+                    logger.info(f"[{self.name}] Terminating: {reason}")
                 break
 
             self.history.truncate()
@@ -135,7 +152,7 @@ class Subagent:
             tool_calls = message.tool_calls or []
 
             if self.verbose and tool_calls:
-                print(f"[{self.name}] Tool calls: {[tc.function.name for tc in tool_calls]}")
+                logger.info(f"[{self.name}] Tool calls: {[tc.function.name for tc in tool_calls]}")
 
             await self.history.add_message(
                 "assistant", message, response.usage
@@ -147,7 +164,7 @@ class Subagent:
                 self.termination_reason = reason
                 self.completed_successfully = reason.startswith("termination_tool_called")
                 if self.verbose:
-                    print(f"[{self.name}] Terminating: {reason}")
+                    logger.info(f"[{self.name}] Terminating: {reason}")
 
                 # Still execute the termination tool call
                 if tool_calls:
@@ -196,11 +213,11 @@ class Subagent:
                     result["termination_reason"] += " (termination_tool_required_but_not_called)"
 
                 if self.verbose:
-                    print(f"[{self.name}] Execution complete:")
-                    print(f"  - Reason: {result['termination_reason']}")
-                    print(f"  - Success: {result['completed_successfully']}")
-                    print(f"  - Iterations: {result['iteration_count']}")
-                    print(f"  - Tokens: {result['total_tokens_used']}")
+                    logger.info(f"[{self.name}] Execution complete:")
+                    logger.info(f"  - Reason: {result['termination_reason']}")
+                    logger.info(f"  - Success: {result['completed_successfully']}")
+                    logger.info(f"  - Iterations: {result['iteration_count']}")
+                    logger.info(f"  - Tokens: {result['total_tokens_used']}")
 
                 return result
             finally:
@@ -233,4 +250,4 @@ if __name__ == "__main__":
     )
 
     response = agent.run("What is the weather in Tokyo?")
-    print(response)
+    logger.info(response)
