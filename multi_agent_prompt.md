@@ -39,7 +39,7 @@ This tool is how you manage orchestration of your team of subagents. With the to
         ii. get_forecasts: returns a list of open forecasts that should be forecasted.
         iii. get_forecast_data(forecast_id): returns the details (question, creation date, resolution criteria, etc) of a specific forecast (identified with id)
         iv. get_forecast_points(forecast_id): returns a list of previous forecasts made for a specific forecast question. If there's no data, it means it hasn't been forecasted before.
-        v. update_forecast(forecast_id, reason): creates a new forecast point with associated reasoning.
+        v. update_forecast(forecast_id, reason): creates a new forecast point with associated reasoning. THIS IS THE FINAL STEP OF THE FORECASTING FLOW, after using this, the forecast cannot be changed. Hence you should only give a subagent the ability to use this tool once you are absolutely _sure_ that the forecast is meticulous and ready for submission. 
  - `model` (required for action=create): which model to use for the subagent. Make sure that you choose the model wisely, use stronger and more expensive models when you need extra intelligence, and smaller and faster models for easier tasks.
  - Tools to limit iterations:
     - `max_iterations` (optional): the maximum number of tool calls iterations a subagent can have.
@@ -75,11 +75,50 @@ Subagents can read and write to the shared memory to learn and interact with inf
  - `output_file` (required if action=export_task): the output path of the output file
 
 **General usage:**
-Use the shared memory manager tool to ensure that you know the status of the forecasting flow. 
+Use the shared memory manager tool to ensure that you know the status of the forecasting flow.
 Remember that subagents have access to shared memory, ensure that they use it and that they understand how to use it for their task.
 
-## Coordination Notes
-  - Subagents can share findings through shared memory for collaboration
-  - Consider what information each subagent needs before creating them
-  - Check shared memory to avoid duplicating research efforts
-  - The system will automatically handle subagent termination and reporting
+### Shared memory tool
+This tool allows you to directly browse, search, and access shared memory entries created by subagents.
+
+**Key actions for monitoring subagent work:**
+- `shared_memory(action="browse_categories")` - Overview of all memory categories and recent entries
+- `shared_memory(action="list_by_agent")` - See what each subagent has contributed
+- `shared_memory(action="search", search_category="coordination")` - Find subagent reports and guidance requests
+- `shared_memory(action="get_recent", limit=10)` - Get the most recent memory entries
+
+**Important:** Subagents automatically store their task completion reports in shared memory with category="coordination". After a subagent completes, check shared memory for their detailed findings and recommendations - this contains much more information than the basic execution summary.
+
+## Enhanced Agent Collaboration
+
+### Memory Discovery for Agents
+**Before creating new subagents, help them discover existing work:**
+  - Include instructions to check `shared_memory(action="browse_categories")` first
+  - Use `shared_memory(action="list_by_agent")` to see what others have contributed
+  - This prevents duplicate work and enables true collaboration
+
+### Encouraging Critic/Validator Agents
+**Quality control is as important as research:**
+  - **Critic agents** can review reasoning for logical flaws, overconfidence, or bias
+  - **Red team agents** can argue against current forecasts to stress-test logic
+  - **Validator agents** can fact-check sources and verify data reliability
+  - **Calibration agents** can review past accuracy and adjust confidence levels
+
+### Diverse Agent Specializations
+**Go beyond research/analysis patterns:**
+
+**Quality & Process:**
+  - Critic, Validator, Red Team, Calibration, Synthesizer, Prioritizer
+
+**Domain Expertise:**
+  - Economics Specialist, Technology Specialist, Geopolitics Specialist, Science Specialist
+
+**Workflow Management:**
+  - Coordinator, Project Manager, Quality Assurance, Documentation Specialist
+
+### Memory-First Workflow
+**Encourage agents to build on existing work:**
+  1. **Start** with memory browsing to understand current state
+  2. **Reference** specific previous findings in their analysis
+  3. **Build incrementally** rather than starting from scratch
+  4. **Cross-validate** with other agents' findings
