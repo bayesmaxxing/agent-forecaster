@@ -77,7 +77,32 @@ ADDITIONAL DATA:
 {additional_data if additional_data else "None"}
 """
 
-        return f"Task report submitted successfully. Results have been passed to the coordinator.\n{formatted_report}"
+        # Store report in shared memory for coordinator access
+        try:
+            from ..utils.shared_memory import get_shared_memory
+            shared_memory = get_shared_memory()
+
+            # Store the full report
+            shared_memory.store(
+                agent_name="system",  # Mark as system-generated
+                task_id="multi_agent_session",
+                category="coordination",
+                title=f"Task Report - Status: {task_status}",
+                content=formatted_report,
+                metadata={
+                    "report_type": "task_completion",
+                    "task_status": task_status,
+                    "confidence": confidence,
+                    "structured_data": report
+                },
+                tags=["report", "task_completion", task_status]
+            )
+
+        except Exception as e:
+            # Don't fail the report if memory storage fails
+            print(f"Warning: Failed to store report in shared memory: {e}")
+
+        return f"✅ Task report submitted and stored in shared memory.\n{formatted_report}"
 
 
 class RequestGuidanceTool(Tool):
@@ -129,4 +154,27 @@ CONTEXT:
 Please provide guidance on how to proceed.
 """
 
-        return f"Guidance request submitted to coordinator.\n{guidance_request}"
+        # Store guidance request in shared memory for coordinator access
+        try:
+            from ..utils.shared_memory import get_shared_memory
+            shared_memory = get_shared_memory()
+
+            shared_memory.store(
+                agent_name="system",
+                task_id="multi_agent_session",
+                category="coordination",
+                title=f"Guidance Request - {urgency.upper()} Priority",
+                content=guidance_request,
+                metadata={
+                    "request_type": "guidance",
+                    "urgency": urgency,
+                    "question": question,
+                    "context": context
+                },
+                tags=["guidance_request", urgency, "coordination"]
+            )
+
+        except Exception as e:
+            print(f"Warning: Failed to store guidance request in shared memory: {e}")
+
+        return f"✅ Guidance request submitted and stored in shared memory.\n{guidance_request}"
