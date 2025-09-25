@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 
 class SubagentManagerTool(Tool):
-    def __init__(self, subagents: dict[str, "Subagent"]):
+    def __init__(self):
         super().__init__(
             name="subagent_manager",
             description="Manage subagents with specific capabilities, goals, and execution limits",
@@ -42,13 +42,13 @@ class SubagentManagerTool(Tool):
                     "model": {
                         "type": "string",
                         "description": "Model to use for this subagent (required for create action)",
-                        "enum": ["anthropic/claude-3-haiku-20240307", "anthropic/claude-3-5-sonnet-20241022", "anthropic/claude-3-5-sonnet-20250122", "anthropic/claude-3-opus-20240229", "openai/gpt-4o", "openai/gpt-5"]
+                        "enum": ["x-ai/grok-4-fast:free"]
                     },
                     "max_iterations": {
                         "type": "integer",
                         "minimum": 1,
                         "maximum": 50,
-                        "default": 10,
+                        "default": 20,
                         "description": "Maximum number of tool call iterations (optional for create action)"
                     },
                     "termination_tools": {
@@ -66,7 +66,7 @@ class SubagentManagerTool(Tool):
             }
         )
 
-        self.subagents = subagents
+        self.subagents = {}
 
     async def execute(self, action: str, **kwargs) -> str:
         if action == "create":
@@ -111,13 +111,13 @@ class SubagentManagerTool(Tool):
             if tool_name == "query_perplexity":
                 agent_tools.append(QueryPerplexityTool())
             elif tool_name == "get_forecasts":
-                agent_tools.append(GetForecastsTool(model=model))
+                agent_tools.append(GetForecastsTool(model="multi"))
             elif tool_name == "get_forecast_data":
                 agent_tools.append(GetForecastDataTool())
             elif tool_name == "get_forecast_points":
-                agent_tools.append(GetForecastPointsTool(model=model))
+                agent_tools.append(GetForecastPointsTool(model="multi"))
             elif tool_name == "update_forecast":
-                agent_tools.append(UpdateForecastTool(model=model))
+                agent_tools.append(UpdateForecastTool(model="multi"))
             elif tool_name == "shared_memory":
                 # Already added above, but allow explicit inclusion
                 continue
@@ -133,10 +133,10 @@ class SubagentManagerTool(Tool):
 
         config = SubagentConfig(
             model=model,
-            max_tokens=4096,
+            max_tokens=8192,
             temperature=1.0,
             max_iterations=max_iterations,
-            max_total_tokens=4096,
+            max_total_tokens=200000,
             termination_tools=termination_tools,
             require_termination_tool=require_termination_tool
         )

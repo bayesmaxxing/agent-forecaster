@@ -8,6 +8,7 @@ import argparse
 from datetime import datetime
 from agents.agent import Agent, ModelConfig
 from agents.tools import SubagentManagerTool, SharedMemoryManagerTool
+from agents.tools.shared_memory_tool import SharedMemoryTool
 
 def setup_environment():
     """Set up environment variables."""
@@ -33,8 +34,10 @@ async def main(model: str, verbose: bool):
         model_name = "x-ai/grok-4"
     elif model.lower() == "opus":
         model_name = "anthropic/claude-opus-4.1"
+    elif model.lower() == "multi":
+        model_name = "x-ai/grok-4-fast:free"
     else:
-        print("Invalid model. Please choose between Gemini, GPT-5, Grok, or Opus.")
+        print("Invalid model. Please choose between Gemini, GPT-5, Grok, Opus, or Multi.")
         return
     
     # Configure the agent
@@ -51,14 +54,15 @@ async def main(model: str, verbose: bool):
 
     subagent_tool = SubagentManagerTool()
     shared_memory_manager_tool = SharedMemoryManagerTool()
+    shared_memory_tool = SharedMemoryTool(agent_name="Orchestrator", task_id="multi_agent_session")
 
-    # Create the Orchestator agent
+    # Create the Orchestrator agent
     agent = Agent(
-        name="Orchestator",
+        name="Orchestrator",
         system=system_prompt,
         config=config,
         mcp_servers=[],
-        tools = [subagent_tool, shared_memory_manager_tool],
+        tools = [subagent_tool, shared_memory_manager_tool, shared_memory_tool],
         verbose=verbose,
     )
     
@@ -67,7 +71,7 @@ async def main(model: str, verbose: bool):
     while True:
         try:
             
-            response = await agent.run_async(user_input="Go ahead and forecast!")
+            response = await agent.run_async(user_input="Be creative in how you forecast!")
             
         except KeyboardInterrupt:
             print("\nGoodbye!")
@@ -79,12 +83,12 @@ async def main(model: str, verbose: bool):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Forecasting Agent")
-    parser.add_argument("-m", "--model", type=str, default="opus", help="Model to use. Choose between Anthropic Opus, OpenAI GPT-5, or Grok")
+    parser.add_argument("-m", "--model", type=str, default="grok", help="Model to use. Choose between Anthropic Opus, OpenAI GPT-5, or Grok")
     parser.add_argument("-v", "--verbose", type=bool, default=False, help="Verbose mode")
 
     args = parser.parse_args()
 
-    if args.model.lower() not in ["opus", "gpt-5", "grok", "gemini"]:
+    if args.model.lower() not in ["opus", "gpt-5", "grok", "gemini", "multi"]:
         print("Invalid model. Please choose between Anthropic Opus, OpenAI GPT-5, Grok, or Gemini.")
         exit()
     
@@ -92,4 +96,4 @@ if __name__ == "__main__":
     print(f"Running with model: {args.model}")
     print(f"Running with verbose: {args.verbose}")
     setup_environment()
-    asyncio.run(main(args.model, args.verbose))
+    asyncio.run(main("multi", args.verbose))
