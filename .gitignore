@@ -5,3 +5,6 @@
 
 # Agent logs
 *.log
+
+# Shared memory 
+shared_memory/
