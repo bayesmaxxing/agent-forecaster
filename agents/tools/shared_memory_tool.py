@@ -17,7 +17,7 @@ class SharedMemoryTool(Tool):
                 "properties": {
                     "action": {
                         "type": "string",
-                        "enum": ["store", "search", "get", "get_recent", "get_task_history", "update", "get_stats"],
+                        "enum": ["store", "search", "get", "get_recent", "get_task_history", "update", "get_stats", "browse_categories", "list_by_agent"],
                         "description": "The action to perform on shared memory"
                     },
                     "category": {
@@ -96,6 +96,10 @@ class SharedMemoryTool(Tool):
                 return await self._update(**kwargs)
             elif action == "get_stats":
                 return await self._get_stats()
+            elif action == "browse_categories":
+                return await self._browse_categories(**kwargs)
+            elif action == "list_by_agent":
+                return await self._list_by_agent(**kwargs)
             else:
                 return f"Error: Invalid action '{action}'"
         except Exception as e:
@@ -241,6 +245,58 @@ class SharedMemoryTool(Tool):
                f"📁 Storage Location: {stats['memory_dir']}\n\n" \
                f"📂 By Category:\n{category_breakdown}\n\n" \
                f"🤖 By Agent:\n{agent_breakdown}"
+
+    async def _browse_categories(self, **kwargs) -> str:
+        """Browse available content by category with preview."""
+        all_results = self.memory.search(limit=None)
+        if not all_results:
+            return "📭 No entries found in shared memory."
+
+        # Group by category
+        by_category = {}
+        for entry in all_results:
+            if entry.category not in by_category:
+                by_category[entry.category] = []
+            by_category[entry.category].append(entry)
+
+        category_summaries = []
+        for category, entries in by_category.items():
+            recent_titles = [e.title for e in sorted(entries, key=lambda x: x.timestamp, reverse=True)[:3]]
+            category_summaries.append(
+                f"📂 **{category.upper()}** ({len(entries)} entries)\n"
+                f"   Recent: {', '.join(recent_titles[:2])}{'...' if len(recent_titles) > 2 else ''}"
+            )
+
+        return f"🗂️ **Memory Categories Overview:**\n\n" + "\n\n".join(category_summaries) + \
+               f"\n\n💡 Use `search` with `search_category` to explore specific categories."
+
+    async def _list_by_agent(self, **kwargs) -> str:
+        """List recent work by each agent for easy discovery."""
+        all_results = self.memory.search(limit=None)
+        if not all_results:
+            return "📭 No entries found in shared memory."
+
+        # Group by agent
+        by_agent = {}
+        for entry in all_results:
+            if entry.agent_name not in by_agent:
+                by_agent[entry.agent_name] = []
+            by_agent[entry.agent_name].append(entry)
+
+        agent_summaries = []
+        for agent_name, entries in by_agent.items():
+            sorted_entries = sorted(entries, key=lambda x: x.timestamp, reverse=True)[:3]
+            entry_previews = []
+            for entry in sorted_entries:
+                entry_previews.append(f"   • {entry.category}: {entry.title}")
+
+            agent_summaries.append(
+                f"🤖 **{agent_name}** ({len(entries)} contributions)\n" +
+                "\n".join(entry_previews)
+            )
+
+        return f"👥 **Work by Agent:**\n\n" + "\n\n".join(agent_summaries) + \
+               f"\n\n💡 Use `search` with `search_agent` to see specific agent's work."
 
 
 class SharedMemoryManagerTool(Tool):
