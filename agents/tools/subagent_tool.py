@@ -42,7 +42,7 @@ class SubagentManagerTool(Tool):
                     "model": {
                         "type": "string",
                         "description": "Model to use for this subagent (required for create action)",
-                        "enum": ["x-ai/grok-4-fast:free"]
+                        "enum": ["x-ai/grok-4-fast:free", "openai/o3-pro", "google/gemini-2.5-flash-preview-09-2025"]
                     },
                     "max_iterations": {
                         "type": "integer",

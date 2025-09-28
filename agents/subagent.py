@@ -14,6 +14,7 @@ from .tools.base import Tool
 from .utils.history_util import MessageHistory
 from .utils.tool_util import execute_tools
 from .utils.connections import setup_mcp_connections
+from .utils.logging_util import get_session_logger, AgentType, LogLevel
 
 @dataclass
 class SubagentConfig:
@@ -30,20 +31,7 @@ class SubagentConfig:
     agent_id: str = "subagent"
 
 
-LOGS_DIR = "sub_agent_logs"
-os.makedirs(LOGS_DIR, exist_ok=True)
-log_filename = os.path.join(LOGS_DIR, f'subagent_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log')
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler(log_filename),
-        logging.StreamHandler()
-    ]
-)
-
-logger = logging.getLogger('SubagentLogger')
+# Logging is now handled by the centralized session logger
 class Subagent:
     """OpenRouter-powered agent with tool use capabilities."""
 
@@ -75,7 +63,11 @@ class Subagent:
         )
 
         if self.verbose:
-            logger.info(f"\n[{self.name}] Subagent initialized")
+            session_logger = get_session_logger()
+            session_logger.log_subagent_lifecycle(
+                subagent_name=self.name,
+                action="Created"
+            )
 
         # Execution tracking
         self.iteration_count = 0
@@ -125,7 +117,14 @@ class Subagent:
     async def _agent_loop(self, user_input: str) -> dict[str, Any]:
         """Process user input and handle tool calls in a loop with termination conditions."""
         if self.verbose:
-            logger.info(f"\n[{self.name}] Received: {user_input}")
+            session_logger = get_session_logger()
+            session_logger.log_agent_action(
+                agent_name=self.name,
+                action="Received task",
+                agent_type=AgentType.SUBAGENT,
+                details=user_input[:100] + "..." if len(user_input) > 100 else user_input,
+                indent=1
+            )
         await self.history.add_message("user", user_input, None)
 
         tool_dict = {tool.name: tool for tool in self.tools}
@@ -136,7 +135,14 @@ class Subagent:
             if should_terminate:
                 self.termination_reason = reason
                 if self.verbose:
-                    logger.info(f"[{self.name}] Terminating: {reason}")
+                    session_logger = get_session_logger()
+                    session_logger.log_agent_action(
+                        agent_name=self.name,
+                        action=f"Terminating: {reason}",
+                        agent_type=AgentType.SUBAGENT,
+                        level=LogLevel.WARNING,
+                        indent=1
+                    )
                 break
 
             self.history.truncate()
@@ -151,8 +157,38 @@ class Subagent:
             message = response.choices[0].message
             tool_calls = message.tool_calls or []
 
-            if self.verbose and tool_calls:
-                logger.info(f"[{self.name}] Tool calls: {[tc.function.name for tc in tool_calls]}")
+            if self.verbose:
+                session_logger = get_session_logger()
+
+                # Extract reasoning if available (for models that support it)
+                reasoning = None
+                if hasattr(message, 'reasoning') and message.reasoning:
+                    reasoning = message.reasoning
+
+                # Log the full LLM response
+                session_logger.log_llm_response(
+                    agent_name=self.name,
+                    content=message.content,
+                    reasoning=reasoning,
+                    model=response.model if hasattr(response, 'model') else self.config.model,
+                    tokens=response.usage.total_tokens if response.usage else None,
+                    indent=1  # Subagent responses are indented
+                )
+
+                # Log tool calls
+                for tool_call in tool_calls:
+                    import json
+                    try:
+                        params_dict = json.loads(tool_call.function.arguments)
+                    except:
+                        params_dict = {"raw": tool_call.function.arguments}
+
+                    session_logger.log_tool_call(
+                        agent_name=self.name,
+                        tool_name=tool_call.function.name,
+                        params=params_dict,
+                        indent=2
+                    )
 
             await self.history.add_message(
                 "assistant", message, response.usage
@@ -164,7 +200,15 @@ class Subagent:
                 self.termination_reason = reason
                 self.completed_successfully = reason.startswith("termination_tool_called")
                 if self.verbose:
-                    logger.info(f"[{self.name}] Terminating: {reason}")
+                    session_logger = get_session_logger()
+                    level = LogLevel.SUCCESS if self.completed_successfully else LogLevel.WARNING
+                    session_logger.log_agent_action(
+                        agent_name=self.name,
+                        action=f"Terminating: {reason}",
+                        agent_type=AgentType.SUBAGENT,
+                        level=level,
+                        indent=1
+                    )
 
                 # Still execute the termination tool call
                 if tool_calls:
@@ -213,11 +257,14 @@ class Subagent:
                     result["termination_reason"] += " (termination_tool_required_but_not_called)"
 
                 if self.verbose:
-                    logger.info(f"[{self.name}] Execution complete:")
-                    logger.info(f"  - Reason: {result['termination_reason']}")
-                    logger.info(f"  - Success: {result['completed_successfully']}")
-                    logger.info(f"  - Iterations: {result['iteration_count']}")
-                    logger.info(f"  - Tokens: {result['total_tokens_used']}")
+                    session_logger = get_session_logger()
+                    session_logger.log_execution_summary(
+                        agent_name=self.name,
+                        iterations=result['iteration_count'],
+                        tokens=result['total_tokens_used'],
+                        success=result['completed_successfully'],
+                        termination_reason=result['termination_reason']
+                    )
 
                 return result
             finally:
@@ -250,4 +297,4 @@ if __name__ == "__main__":
     )
 
     response = agent.run("What is the weather in Tokyo?")
-    logger.info(response)
+    # Response logged via new system

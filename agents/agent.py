@@ -14,22 +14,7 @@ from .tools.base import Tool
 from .utils.history_util import MessageHistory
 from .utils.tool_util import execute_tools
 from .utils.connections import setup_mcp_connections
-
-# Set up logging
-LOGS_DIR = "logs"
-os.makedirs(LOGS_DIR, exist_ok=True)
-log_filename = os.path.join(LOGS_DIR, f'agent_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log')
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler(log_filename),
-        logging.StreamHandler()
-    ]
-)
-
-logger = logging.getLogger('ForecastingAgent')
+from .utils.logging_util import get_session_logger, AgentType, LogLevel
 
 @dataclass
 class ModelConfig:
@@ -72,7 +57,13 @@ class Agent:
         )
 
         if self.verbose:
-            print(f"\n[{self.name}] Agent initialized")
+            session_logger = get_session_logger()
+            session_logger.log_agent_action(
+                agent_name=self.name,
+                action="Initialized",
+                agent_type=AgentType.ORCHESTRATOR,
+                level=LogLevel.INFO
+            )
 
     def _prepare_api_params(self) -> dict[str, Any]:
         """Prepare parameters for OpenAI API call."""
@@ -96,7 +87,12 @@ class Agent:
     async def _agent_loop(self, user_input: str) -> list[dict[str, Any]]:
         """Process user input and handle tool calls in a loop"""
         if self.verbose:
-            print(f"\n[{self.name}] Received: {user_input}")
+            session_logger = get_session_logger()
+            session_logger.log_agent_action(
+                agent_name=self.name,
+                action=f"Received task",
+                details=user_input[:100] + "..." if len(user_input) > 100 else user_input
+            )
         await self.history.add_message("user", user_input, None)
 
         tool_dict = {tool.name: tool for tool in self.tools}
@@ -106,17 +102,41 @@ class Agent:
             params = self._prepare_api_params()
             
             response = self.client.chat.completions.create(**params)
-            logger.info(f"Response: {response}")
-            
+
             message = response.choices[0].message
             tool_calls = message.tool_calls or []
-            logger.info(f"Tool calls: {tool_calls}")
+
             if self.verbose:
-                if message.content:
-                    logger.info(f"Output: {message.content}")
-                
+                session_logger = get_session_logger()
+
+                # Extract reasoning if available (for models that support it)
+                reasoning = None
+                if hasattr(message, 'reasoning') and message.reasoning:
+                    reasoning = message.reasoning
+
+                # Log the full LLM response
+                session_logger.log_llm_response(
+                    agent_name=self.name,
+                    content=message.content,
+                    reasoning=reasoning,
+                    model=response.model if hasattr(response, 'model') else self.config.model,
+                    tokens=response.usage.total_tokens if response.usage else None,
+                    indent=0
+                )
+
+                # Log tool calls
                 for tool_call in tool_calls:
-                    logger.info(f"Tool call: {tool_call.function.name}({tool_call.function.arguments})")
+                    import json
+                    try:
+                        params_dict = json.loads(tool_call.function.arguments)
+                    except:
+                        params_dict = {"raw": tool_call.function.arguments}
+
+                    session_logger.log_tool_call(
+                        agent_name=self.name,
+                        tool_name=tool_call.function.name,
+                        params=params_dict
+                    )
             
             await self.history.add_message(
                 "assistant", message, response.usage
@@ -128,9 +148,17 @@ class Agent:
                     tool_dict,
                 )
                 if self.verbose:
-                    for block in tool_results:
+                    for i, block in enumerate(tool_results):
                         content = block.get('content', '')
-                        logger.info(f"Tool result: {content}")
+                        # Summarize tool results instead of full content dumps
+                        summary = content[:150] + "..." if len(content) > 150 else content
+                        tool_name = tool_calls[i].function.name if i < len(tool_calls) else "unknown"
+
+                        session_logger.log_tool_call(
+                            agent_name=self.name,
+                            tool_name=tool_name,
+                            result_summary=summary
+                        )
                 await self.history.add_message("user", tool_results)
             else:
                 return message
