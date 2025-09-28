@@ -4,7 +4,7 @@
 .DS_Store
 
 # Agent logs
-*.log
-
+/logs/*.log
+/sub_agent_logs/*.log
 # Shared memory 
 shared_memory/

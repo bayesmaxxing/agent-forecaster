@@ -9,12 +9,13 @@ from datetime import datetime
 from agents.agent import Agent, ModelConfig
 from agents.tools import SubagentManagerTool, SharedMemoryManagerTool
 from agents.tools.shared_memory_tool import SharedMemoryTool
+from agents.utils.logging_util import set_session_logger, cleanup_session_logger
 
 def setup_environment():
     """Set up environment variables."""
     
     if not os.environ.get("OPENROUTER_API_KEY"):
-        print("Error: OPENROUTER_API_KEY environment variable is required")
+        print("❌ Error: OPENROUTER_API_KEY environment variable is required")
         print("Please set it with: export OPENROUTER_API_KEY=your_api_key")
         return False
     
@@ -35,9 +36,9 @@ async def main(model: str, verbose: bool):
     elif model.lower() == "opus":
         model_name = "anthropic/claude-opus-4.1"
     elif model.lower() == "multi":
-        model_name = "x-ai/grok-4-fast:free"
+        model_name = "x-ai/grok-4"
     else:
-        print("Invalid model. Please choose between Gemini, GPT-5, Grok, Opus, or Multi.")
+        print("❌ Invalid model. Please choose between Gemini, GPT-5, Grok, Opus, or Multi.")
         return
     
     # Configure the agent
@@ -66,19 +67,59 @@ async def main(model: str, verbose: bool):
         verbose=verbose,
     )
     
-    print("=== Multi-Agent System ===")
+    # Initialize session logger
+    session_id = f"multi_agent_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    session_logger = set_session_logger(session_id)
+
+    session_logger.log_agent_action(
+        agent_name="System",
+        action="Multi-Agent System Starting"
+    )
     
+    # Autonomous mode - agent decides when to stop
+    cycle_count = 0
+
+    session_logger.log_agent_action(
+        agent_name="System",
+        action="Starting autonomous forecasting session",
+        details="Agent will work until it decides it's accomplished its goals"
+    )
+
     while True:
         try:
-            
-            response = await agent.run_async(user_input="Be creative in how you forecast!")
-            
+            cycle_count += 1
+            session_logger.log_cycle(cycle_count)
+
+            # Give the agent autonomy to decide what to do next
+            if cycle_count == 1:
+                prompt = "Begin autonomous forecasting. Analyze available forecasts, create a strategic plan, and work toward producing high-quality forecasts. When you feel you have accomplished meaningful forecasting work and there's no more valuable work to do in this session, respond with 'AUTONOMOUS_SESSION_COMPLETE' to end gracefully."
+            else:
+                prompt = "Continue your autonomous work from where you left off. Check your previous progress in shared memory and decide on next steps. If you feel the session should end because you've accomplished your goals, respond with 'AUTONOMOUS_SESSION_COMPLETE'."
+
+            response = await agent.run_async(user_input=prompt)
+
+            # Check if agent wants to complete the session
+            # Look for completion signals in the response
+            if hasattr(response, 'content') and "AUTONOMOUS_SESSION_COMPLETE" in str(response.content):
+                session_logger.log_session_end("Agent completed autonomous session")
+                break
+
         except KeyboardInterrupt:
-            print("\nGoodbye!")
+            session_logger.log_session_end("Interrupted by user")
             break
         except Exception as e:
-            print(f"\nError: {e}")
-            print("Please try again.")
+            session_logger.log_error(
+                agent_name="Orchestrator",
+                error=str(e),
+                context=f"Cycle {cycle_count}"
+            )
+            session_logger.log_agent_action(
+                agent_name="System",
+                action="Continuing to next cycle"
+            )
+
+    # Cleanup
+    cleanup_session_logger()
 
 
 if __name__ == "__main__":
@@ -89,11 +130,12 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.model.lower() not in ["opus", "gpt-5", "grok", "gemini", "multi"]:
-        print("Invalid model. Please choose between Anthropic Opus, OpenAI GPT-5, Grok, or Gemini.")
+        print("❌ Invalid model. Please choose between Anthropic Opus, OpenAI GPT-5, Grok, or Gemini.")
         exit()
     
     
     print(f"Running with model: {args.model}")
     print(f"Running with verbose: {args.verbose}")
+    print("Check logs/ directory for detailed session logs with improved formatting.")
     setup_environment()
     asyncio.run(main("multi", args.verbose))

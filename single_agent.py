@@ -16,12 +16,13 @@ from datetime import datetime
 from agents.agent import Agent, ModelConfig
 from agents.tools import ThinkTool, QueryPerplexityTool, RequestFeedbackTool
 from agents.tools.forecasting_tools import GetForecastsTool, GetForecastDataTool, GetForecastPointsTool, UpdateForecastTool
+from agents.utils.logging_util import set_session_logger, cleanup_session_logger
 
 def setup_environment():
     """Set up environment variables for testing."""
     # Check if OPENROUTER_API_KEY is set
     if not os.environ.get("OPENROUTER_API_KEY"):
-        print("Error: OPENROUTER_API_KEY environment variable is required")
+        print("❌ Error: OPENROUTER_API_KEY environment variable is required")
         print("Please set it with: export OPENROUTER_API_KEY=your_api_key")
         return False
     
@@ -46,7 +47,7 @@ async def main(model: str, verbose: bool):
     elif model.lower() == "opus":
         model_name = "anthropic/claude-opus-4.1"
     else:
-        print("Invalid model. Please choose between Gemini, GPT-5, Grok, or Opus.")
+        print("❌ Invalid model. Please choose between Gemini, GPT-5, Grok, or Opus.")
         return
     
     # Configure the agent
@@ -78,7 +79,14 @@ async def main(model: str, verbose: bool):
         verbose=verbose
     )
     
-    print("=== Forecasting Agent Test ===")
+    # Initialize session logger
+    session_id = f"single_agent_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    session_logger = set_session_logger(session_id)
+
+    session_logger.log_agent_action(
+        agent_name="System",
+        action="Single Agent Test Starting"
+    )
     
     while True:
         try:
@@ -86,11 +94,21 @@ async def main(model: str, verbose: bool):
             response = await agent.run_async(user_input="Go ahead and forecast!")
             
         except KeyboardInterrupt:
-            print("\nGoodbye!")
+            session_logger.log_session_end("Interrupted by user")
             break
         except Exception as e:
-            print(f"\nError: {e}")
-            print("Please try again.")
+            session_logger.log_error(
+                agent_name="ForecastingAgent",
+                error=str(e),
+                context="Main loop"
+            )
+            session_logger.log_agent_action(
+                agent_name="System",
+                action="Error occurred, continuing"
+            )
+
+    # Cleanup
+    cleanup_session_logger()
 
 
 if __name__ == "__main__":
@@ -101,11 +119,12 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.model.lower() not in ["opus", "gpt-5", "grok", "gemini"]:
-        print("Invalid model. Please choose between Anthropic Opus, OpenAI GPT-5, Grok, or Gemini.")
+        print("❌ Invalid model. Please choose between Anthropic Opus, OpenAI GPT-5, Grok, or Gemini.")
         exit()
     
     
     print(f"Running with model: {args.model}")
     print(f"Running with verbose: {args.verbose}")
+    print("Check logs/ directory for detailed session logs with improved formatting.")
     setup_environment()
     asyncio.run(main(args.model, args.verbose))
