@@ -42,13 +42,13 @@ class SubagentManagerTool(Tool):
                     "model": {
                         "type": "string",
                         "description": "Model to use for this subagent (required for create action)",
-                        "enum": ["x-ai/grok-4-fast:free", "openai/gpt-5", "google/gemini-2.5-flash-preview-09-2025"]
+                        "enum": ["x-ai/grok-4-fast", "openai/gpt-5", "google/gemini-2.5-flash-preview-09-2025"]
                     },
                     "max_iterations": {
                         "type": "integer",
                         "minimum": 1,
-                        "maximum": 50,
-                        "default": 20,
+                        "maximum": 100,
+                        "default": 50,
                         "description": "Maximum number of tool call iterations (optional for create action)"
                     },
                     "termination_tools": {
