@@ -89,6 +89,8 @@ class Subagent:
             "messages": messages,
         }
         
+        if self.config.model == "openai/gpt-5":
+            params["reasoning_effort"] = "high"
         if self.tools:
             params["tools"] = [tool.to_dict() for tool in self.tools]
         

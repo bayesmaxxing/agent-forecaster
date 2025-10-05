@@ -36,7 +36,7 @@ async def main(model: str, verbose: bool):
     elif model.lower() == "opus":
         model_name = "anthropic/claude-opus-4.1"
     elif model.lower() == "multi":
-        model_name = "x-ai/grok-4"
+        model_name = "anthropic/claude-sonnet-4.5"
     else:
         print("❌ Invalid model. Please choose between Gemini, GPT-5, Grok, Opus, or Multi.")
         return

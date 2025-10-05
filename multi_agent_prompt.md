@@ -42,8 +42,8 @@ This tool is how you manage orchestration of your team of subagents. With the to
         v. update_forecast(forecast_id, reason): creates a new forecast point with associated reasoning. THIS IS THE FINAL STEP OF THE FORECASTING FLOW, after using this, the forecast cannot be changed. Hence you should only give a subagent the ability to use this tool once you are absolutely _sure_ that the forecast is meticulous and ready for submission. 
  - `model` (required for action=create): which model to use for the subagent. Make sure that you choose the model wisely, use stronger and more expensive models when you need extra intelligence, and smaller and faster models for easier tasks.
     - the available models are:
-        i. OpenAI o3 Pro: this is the most intelligent and powerful reasoning model. Only use this model for tasks that require advanced reasoning.
-        ii. X-AI Grok 4 fast: this is a fast and cheap model that is perfect for tasks that require summarization and research, i.e tasks that require lots of output.  
+        i. OpenAI GPT-5: this is the most intelligent and powerful reasoning model. Use this model for tasks that require reasoning and modeling of the world.
+        ii. X-AI Grok 4 fast: this is a fast and cheap model that is good for tasks that require summarization and research, i.e tasks that require lots of output.  
         iii. Gemini 2.5 Flash: this is an intermediate intelligence model with a huge context window. This model is perfect for summarization tasks and tasks that require reasoning over lots of text/data.
 
  - Tools to limit iterations:
