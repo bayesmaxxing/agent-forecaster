@@ -9,7 +9,7 @@ import shutil
 from datetime import datetime
 from agents.agent import Agent, ModelConfig
 from agents.tools import SubagentManagerTool, SharedMemoryManagerTool
-from agents.tools.shared_memory_tool import SharedMemoryTool
+from agents.tools.shared_memory_tool import SharedMemoryTool, PersistentMemoryTool
 from agents.utils.logging_util import set_session_logger, cleanup_session_logger
 
 def setup_environment():
@@ -79,13 +79,15 @@ async def main(model: str, verbose: bool):
     shared_memory_manager_tool = SharedMemoryManagerTool()
     shared_memory_tool = SharedMemoryTool(agent_name="Orchestrator", task_id="multi_agent_session")
 
+    persistent_memory_tool = PersistentMemoryTool()
+
     # Create the Orchestrator agent
     agent = Agent(
         name="Orchestrator",
         system=system_prompt,
         config=config,
         mcp_servers=[],
-        tools = [subagent_tool, shared_memory_manager_tool, shared_memory_tool],
+        tools = [subagent_tool, shared_memory_manager_tool, shared_memory_tool, persistent_memory_tool],
         verbose=verbose,
     )
     

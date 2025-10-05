@@ -94,6 +94,11 @@ This tool allows you to directly browse, search, and access shared memory entrie
 
 **Important:** Subagents automatically store their task completion reports in shared memory with category="coordination". After a subagent completes, check shared memory for their detailed findings and recommendations - this contains much more information than the basic execution summary.
 
+### Persistent memory tool
+This tool allows you to share knowledge with past and future instances of yourself. Use this tool to store and get tips on best practices, ideas you have, and on workflows you think produce the best results. You can also use this memory to check if past instances of yourself have stored insights that can be valuable.
+
+**Don't store any memories related to the specifics of some forecast question, as this can confuse future instances of yourself.** 
+
 ## Enhanced Agent Collaboration
 
 ### Memory Discovery for Agents
