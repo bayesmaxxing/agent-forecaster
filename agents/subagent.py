@@ -13,7 +13,6 @@ from openai import OpenAI
 from .tools.base import Tool
 from .utils.history_util import MessageHistory
 from .utils.tool_util import execute_tools
-from .utils.connections import setup_mcp_connections
 from .utils.logging_util import get_session_logger, AgentType, LogLevel
 
 @dataclass
