@@ -5,6 +5,7 @@ Multi-agent system for forecasting.
 import asyncio
 import os
 import argparse
+import shutil
 from datetime import datetime
 from agents.agent import Agent, ModelConfig
 from agents.tools import SubagentManagerTool, SharedMemoryManagerTool
@@ -20,6 +21,27 @@ def setup_environment():
         return False
     
     return True
+
+
+def clear_shared_memory():
+    """Clear all files from the /shared_memory directory."""
+    shared_memory_path = "shared_memory"
+    
+    if os.path.exists(shared_memory_path):
+        try:
+            # Remove all files and subdirectories in shared_memory
+            for filename in os.listdir(shared_memory_path):
+                file_path = os.path.join(shared_memory_path, filename)
+                if os.path.isfile(file_path) or os.path.islink(file_path):
+                    os.unlink(file_path)  # Remove file or link
+                elif os.path.isdir(file_path):
+                    shutil.rmtree(file_path)  # Remove directory and all contents
+            
+            print(f"✅ Cleared all files from {shared_memory_path}/")
+        except Exception as e:
+            print(f"❌ Error clearing {shared_memory_path}/: {e}")
+    else:
+        print(f"ℹ️  Directory {shared_memory_path}/ does not exist")
 
 
 async def main(model: str, verbose: bool):
@@ -120,7 +142,7 @@ async def main(model: str, verbose: bool):
 
     # Cleanup
     cleanup_session_logger()
-
+    clear_shared_memory()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Forecasting Agent")
