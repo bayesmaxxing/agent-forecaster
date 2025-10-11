@@ -6,5 +6,6 @@
 # Agent logs
 /logs/*.log
 /sub_agent_logs/*.log
+*.jsonl
 # Shared memory 
 shared_memory/
