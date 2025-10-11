@@ -13,7 +13,6 @@ from openai import OpenAI
 from .tools.base import Tool
 from .utils.history_util import MessageHistory
 from .utils.tool_util import execute_tools
-from .utils.connections import setup_mcp_connections
 from .utils.logging_util import get_session_logger, AgentType, LogLevel
 
 @dataclass
@@ -34,7 +33,6 @@ class Agent:
         name: str,
         system: str,
         tools: list[Tool] | None = None,
-        mcp_servers: list[dict[str, Any]] | None = None,
         config: ModelConfig | None = None,
         verbose: bool = False,
         client: OpenAI | None = None,
@@ -44,7 +42,6 @@ class Agent:
         self.verbose = verbose
         self.tools = list(tools or [])
         self.config = config or ModelConfig()
-        self.mcp_servers = mcp_servers or []
         self.client = client or OpenAI(
             base_url="https://openrouter.ai/api/v1",
             api_key=os.environ.get("OPENROUTER_API_KEY", "")
@@ -150,8 +147,7 @@ class Agent:
                 if self.verbose:
                     for i, block in enumerate(tool_results):
                         content = block.get('content', '')
-                        # Summarize tool results instead of full content dumps
-                        summary = content[:150] + "..." if len(content) > 150 else content
+                        summary = content
                         tool_name = tool_calls[i].function.name if i < len(tool_calls) else "unknown"
 
                         session_logger.log_tool_call(
@@ -159,20 +155,17 @@ class Agent:
                             tool_name=tool_name,
                             result_summary=summary
                         )
+                        
                 await self.history.add_message("user", tool_results)
             else:
                 return message
 
     async def run_async(self, user_input: str) -> list[dict[str, Any]]:
-        """Run agent with MCP tools asynchronously."""
+        """Run agent asynchronously."""
         async with AsyncExitStack() as stack:
             original_tools = list(self.tools)
 
             try:
-                mcp_tools = await setup_mcp_connections(
-                    self.mcp_servers, stack
-                )
-                self.tools.extend(mcp_tools)
                 return await self._agent_loop(user_input)
             finally:
                 self.tools = original_tools
@@ -186,7 +179,6 @@ if __name__ == "__main__":
         name="TestAgent",
         system="You are a test agent.",
         tools=[],
-        mcp_servers=[],
         config=ModelConfig(),
         verbose=True
     )
