@@ -14,7 +14,7 @@ import os
 import argparse
 from datetime import datetime
 from agents.agent import Agent, ModelConfig
-from agents.tools import ThinkTool, QueryPerplexityTool, RequestFeedbackTool
+from agents.tools import ThinkTool, QueryPerplexityTool, RequestFeedbackTool, CodeExecutorTool
 from agents.tools.forecasting_tools import GetForecastsTool, GetForecastDataTool, GetForecastPointsTool, UpdateForecastTool
 from agents.utils.logging_util import set_session_logger, cleanup_session_logger
 
@@ -68,6 +68,7 @@ async def main(model: str, verbose: bool):
     update_forecast_tool = UpdateForecastTool(model=model)
     query_perplexity_tool = QueryPerplexityTool()
     request_feedback_tool = RequestFeedbackTool()
+    code_executor_tool = CodeExecutorTool()
 
     # Create the agent
     agent = Agent(
@@ -75,7 +76,7 @@ async def main(model: str, verbose: bool):
         system=system_prompt,
         config=config,
         mcp_servers=[],
-        tools = [think_tool, get_forecasts_tool, get_forecast_data_tool, get_forecast_points_tool, update_forecast_tool, query_perplexity_tool, request_feedback_tool],
+        tools = [think_tool, get_forecasts_tool, get_forecast_data_tool, get_forecast_points_tool, update_forecast_tool, query_perplexity_tool, request_feedback_tool, code_executor_tool],
         verbose=verbose
     )
     
