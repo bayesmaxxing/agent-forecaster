@@ -58,7 +58,7 @@ async def main(model: str, verbose: bool):
     )
     current_date = datetime.now().strftime("%Y-%m-%d")
     
-    system_prompt = open("prompt.md", "r").read()
+    system_prompt = open("prompts/prompt.md", "r").read()
     system_prompt = system_prompt.replace("{current_date}", current_date)
 
     think_tool = ThinkTool()
@@ -75,7 +75,6 @@ async def main(model: str, verbose: bool):
         name="ForecastingAgent",
         system=system_prompt,
         config=config,
-        mcp_servers=[],
         tools = [think_tool, get_forecasts_tool, get_forecast_data_tool, get_forecast_points_tool, update_forecast_tool, query_perplexity_tool, request_feedback_tool, code_executor_tool],
         verbose=verbose
     )
@@ -91,8 +90,22 @@ async def main(model: str, verbose: bool):
     
     while True:
         try:
-            
-            response = await agent.run_async(user_input="Go ahead and forecast!")
+            cycle_count += 1
+            session_logger.log_cycle(cycle_count)
+
+            # Give the agent autonomy to decide what to do next
+            if cycle_count == 1:
+                prompt = "Begin autonomous forecasting. Analyze available forecasts, create a strategic plan, and work toward producing high-quality forecasts. When you feel you have accomplished meaningful forecasting work and there's no more valuable work to do in this session, respond with 'AUTONOMOUS_SESSION_COMPLETE' to end gracefully."
+            else:
+                prompt = "Continue your autonomous work from where you left off. Check your previous progress in shared memory and decide on next steps. If you feel the session should end because you've accomplished your goals, respond with 'AUTONOMOUS_SESSION_COMPLETE'."
+
+            response = await agent.run_async(user_input=prompt)
+
+            # Check if agent wants to complete the session
+            # Look for completion signals in the response
+            if hasattr(response, 'content') and "AUTONOMOUS_SESSION_COMPLETE" in str(response.content):
+                session_logger.log_session_end("Agent completed autonomous session")
+                break
             
         except KeyboardInterrupt:
             session_logger.log_session_end("Interrupted by user")

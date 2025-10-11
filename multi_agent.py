@@ -72,7 +72,8 @@ async def main(model: str, verbose: bool):
     )
     current_date = datetime.now().strftime("%Y-%m-%d")
     
-    system_prompt = open("multi_agent_prompt.md", "r").read()
+    
+    system_prompt = open("prompts/multi_agent_prompt.md", "r").read()
     system_prompt = system_prompt.replace("{current_date}", current_date)
 
     subagent_tool = SubagentManagerTool()
@@ -80,7 +81,6 @@ async def main(model: str, verbose: bool):
     shared_memory_tool = SharedMemoryTool(agent_name="Orchestrator", task_id="multi_agent_session")
 
     persistent_memory_tool = PersistentMemoryTool()
-    code_executor_tool = CodeExecutorTool()
 
     # Create the Orchestrator agent
     agent = Agent(
