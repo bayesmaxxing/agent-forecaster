@@ -1,7 +1,9 @@
 from typing import List, Optional, TYPE_CHECKING
 from dataclasses import dataclass
 from agents.types import Tool
-from agents.tools import QueryPerplexityTool, GetForecastsTool, GetForecastDataTool, GetForecastPointsTool, UpdateForecastTool
+from .information_tools import QueryPerplexityTool
+from .forecasting_tools import GetForecastsTool, GetForecastDataTool, GetForecastPointsTool, UpdateForecastTool
+from .code_executor_tool import CodeExecutorTool
 from agents.tools.reporting_tool import ReportResultsTool, RequestGuidanceTool
 from agents.tools.shared_memory_tool import SharedMemoryTool
 
@@ -37,7 +39,7 @@ class SubagentManagerTool(Tool):
                     "tools": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "List of tool names this subagent should have access to. Available: query_perplexity, get_forecasts, get_forecast_data, get_forecast_points, update_forecast, shared_memory. Note: report_results and request_guidance are automatically included (required for create action)"
+                        "description": "List of tool names this subagent should have access to. Available: query_perplexity, code_executor, get_forecasts, get_forecast_data, get_forecast_points, update_forecast, shared_memory. Note: report_results and request_guidance are automatically included (required for create action)"
                     },
                     "model": {
                         "type": "string",
@@ -118,6 +120,8 @@ class SubagentManagerTool(Tool):
                 agent_tools.append(GetForecastPointsTool(model="multi"))
             elif tool_name == "update_forecast":
                 agent_tools.append(UpdateForecastTool(model="multi"))
+            elif tool_name == "code_executor":
+                agent_tools.append(CodeExecutorTool())
             elif tool_name == "shared_memory":
                 # Already added above, but allow explicit inclusion
                 continue
@@ -125,7 +129,7 @@ class SubagentManagerTool(Tool):
                 # Already added above
                 continue
             else:
-                return f"Error: Tool '{tool_name}' not available. Available tools: query_perplexity, get_forecasts, get_forecast_data, get_forecast_points, update_forecast, shared_memory, report_results, request_guidance"
+                return f"Error: Tool '{tool_name}' not available. Available tools: query_perplexity, code_executor, get_forecasts, get_forecast_data, get_forecast_points, update_forecast, shared_memory, report_results, request_guidance"
 
         # Set up termination tools (default to report_results if none specified)
         if termination_tools is None:

@@ -36,10 +36,11 @@ This tool is how you manage orchestration of your team of subagents. With the to
  - `tools` (required for action=create): a list of tools that the subagent should be able to use.
     a. available tools to choose from: 
         i. query_perplexity: Lets the subagent query Perplexity for up-to-date information
-        ii. get_forecasts: returns a list of open forecasts that should be forecasted.
-        iii. get_forecast_data(forecast_id): returns the details (question, creation date, resolution criteria, etc) of a specific forecast (identified with id)
-        iv. get_forecast_points(forecast_id): returns a list of previous forecasts made for a specific forecast question. If there's no data, it means it hasn't been forecasted before.
-        v. update_forecast(forecast_id, reason): creates a new forecast point with associated reasoning. THIS IS THE FINAL STEP OF THE FORECASTING FLOW, after using this, the forecast cannot be changed. Hence you should only give a subagent the ability to use this tool once you are absolutely _sure_ that the forecast is meticulous and ready for submission. 
+        ii. code_executor: Lets the subagent run snippets of Python code with numpy, pandas, and scipy.
+        iii. get_forecasts: returns a list of open forecasts that should be forecasted.
+        iv. get_forecast_data(forecast_id): returns the details (question, creation date, resolution criteria, etc) of a specific forecast (identified with id)
+        v. get_forecast_points(forecast_id): returns a list of previous forecasts made for a specific forecast question. If there's no data, it means it hasn't been forecasted before.
+        vi. update_forecast(forecast_id, reason): creates a new forecast point with associated reasoning. THIS IS THE FINAL STEP OF THE FORECASTING FLOW, after using this, the forecast cannot be changed. Hence you should only give a subagent the ability to use this tool once you are absolutely _sure_ that the forecast is meticulous and ready for submission. 
  - `model` (required for action=create): which model to use for the subagent. Make sure that you choose the model wisely, use stronger and more expensive models when you need extra intelligence, and smaller and faster models for easier tasks.
     - the available models are:
         i. OpenAI GPT-5: this is the most intelligent and powerful reasoning model. Use this model for tasks that require reasoning and modeling of the world.

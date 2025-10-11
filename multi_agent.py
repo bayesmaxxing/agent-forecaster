@@ -8,7 +8,7 @@ import argparse
 import shutil
 from datetime import datetime
 from agents.agent import Agent, ModelConfig
-from agents.tools import SubagentManagerTool, SharedMemoryManagerTool
+from agents.tools import SubagentManagerTool, SharedMemoryManagerTool, CodeExecutorTool
 from agents.tools.shared_memory_tool import SharedMemoryTool, PersistentMemoryTool
 from agents.utils.logging_util import set_session_logger, cleanup_session_logger
 
@@ -80,6 +80,7 @@ async def main(model: str, verbose: bool):
     shared_memory_tool = SharedMemoryTool(agent_name="Orchestrator", task_id="multi_agent_session")
 
     persistent_memory_tool = PersistentMemoryTool()
+    code_executor_tool = CodeExecutorTool()
 
     # Create the Orchestrator agent
     agent = Agent(
