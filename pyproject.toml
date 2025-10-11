@@ -9,4 +9,5 @@ dependencies = [
     "fastapi>=0.115.12",
     "mcp>=1.9.2",
     "requests>=2.32.3",
+    "docker>=7.1.0",
 ]
