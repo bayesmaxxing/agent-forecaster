@@ -1,5 +1,7 @@
-from typing import List, Optional, TYPE_CHECKING
+from typing import List, Optional, TYPE_CHECKING, Dict, Any
 from dataclasses import dataclass
+import asyncio
+import time
 from agents.types import Tool
 from .information_tools import QueryPerplexityTool
 from .forecasting_tools import GetForecastsTool, GetForecastDataTool, GetForecastPointsTool, UpdateForecastTool
@@ -21,7 +23,7 @@ class SubagentManagerTool(Tool):
                 "properties": {
                     "action": {
                         "type": "string",
-                        "enum": ["create", "run", "delete", "status", "list"],
+                        "enum": ["create", "run", "delete", "status", "list", "run_parallel", "run_batch"],
                         "description": "The action to perform on subagents."
                     },
                     "name": {
@@ -62,7 +64,19 @@ class SubagentManagerTool(Tool):
                         "type": "boolean",
                         "default": False,
                         "description": "Whether a termination tool must be called for successful completion (optional for create action)"
-                    }
+                    },
+                    "subagent_tasks": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "name": {"type": "string", "description": "Name of the subagent to run"},
+                                "task_input": {"type": "string", "description": "Task input for the subagent"}
+                            },
+                            "required": ["name", "task_input"]
+                        },
+                        "description": "List of subagent tasks for parallel/batch execution (required for run_parallel and run_batch actions)"
+                    },
                 },
                 "required": ["action"],
             }
@@ -75,6 +89,10 @@ class SubagentManagerTool(Tool):
             return await self._create_subagent(**kwargs)
         elif action == "run":
             return await self._run_subagent(**kwargs)
+        elif action == "run_parallel":
+            return await self._run_subagents_parallel(**kwargs)
+        elif action == "run_batch":
+            return await self._run_subagents_batch(**kwargs)
         elif action == "delete":
             return self._delete_subagent(**kwargs)
         elif action == "status":
@@ -225,3 +243,91 @@ Available Tools: {[tool.name for tool in subagent.tools]}
             )
 
         return "Existing subagents:\n" + "\n".join(subagent_list)
+
+    async def _run_subagents_parallel(
+        self,
+        subagent_tasks: List[Dict[str, str]],
+        **kwargs
+    ) -> str:
+        """Run multiple subagents in parallel."""
+        if not subagent_tasks:
+            return "Error: No subagent tasks provided"
+
+        # Validate all subagents exist
+        missing_agents = []
+        for task in subagent_tasks:
+            if task["name"] not in self.subagents:
+                missing_agents.append(task["name"])
+        
+        if missing_agents:
+            return f"Error: Subagents not found: {', '.join(missing_agents)}"
+
+        try:
+            # Execute subagents in parallel
+            results = await asyncio.gather(
+                *[self._run_subagent(task["name"], task["task_input"]) for task in subagent_tasks],
+                return_exceptions=True
+            )
+
+            # Process results
+            successful_results = []
+            failed_results = []
+            
+            for i, result in enumerate(results):
+                task = subagent_tasks[i]
+                if isinstance(result, Exception):
+                    failed_results.append(f"❌ {task['name']}: {str(result)}")
+                else:
+                    successful_results.append(result)
+
+            # Format comprehensive report
+            report = f"""
+PARALLEL SUBAGENT EXECUTION REPORT
+==================================
+Executed {len(subagent_tasks)} subagents in parallel
+
+SUCCESSFUL EXECUTIONS ({len(successful_results)}):
+{chr(10).join(successful_results)}
+
+FAILED EXECUTIONS ({len(failed_results)}):
+{chr(10).join(failed_results)}
+"""
+            return report
+
+        except Exception as e:
+            return f"Error: Parallel execution failed: {str(e)}"
+
+    async def _run_subagents_batch(
+        self,
+        subagent_tasks: List[Dict[str, str]],
+        **kwargs
+    ) -> str:
+        """Run multiple subagents sequentially (batch mode)."""
+        if not subagent_tasks:
+            return "Error: No subagent tasks provided"
+
+        # Validate all subagents exist
+        missing_agents = []
+        for task in subagent_tasks:
+            if task["name"] not in self.subagents:
+                missing_agents.append(task["name"])
+        
+        if missing_agents:
+            return f"Error: Subagents not found: {', '.join(missing_agents)}"
+
+        results = []
+        for task in subagent_tasks:
+            try:
+                result = await self._run_subagent(task["name"], task["task_input"])
+                results.append(result)
+            except Exception as e:
+                results.append(f"❌ {task['name']}: Error - {str(e)}")
+
+        return f"""
+BATCH SUBAGENT EXECUTION REPORT
+===============================
+Executed {len(subagent_tasks)} subagents sequentially
+
+RESULTS:
+{chr(10).join(results)}
+"""
