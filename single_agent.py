@@ -87,8 +87,9 @@ async def main(model: str, verbose: bool):
         agent_name="System",
         action="Single Agent Test Starting"
     )
-    
-    while True:
+    cycle_count = 0
+
+    while True:    
         try:
             cycle_count += 1
             session_logger.log_cycle(cycle_count)
