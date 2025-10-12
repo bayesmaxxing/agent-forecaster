@@ -87,7 +87,6 @@ async def main(model: str, verbose: bool):
         name="Orchestrator",
         system=system_prompt,
         config=config,
-        mcp_servers=[],
         tools = [subagent_tool, shared_memory_manager_tool, shared_memory_tool, persistent_memory_tool],
         verbose=verbose,
     )

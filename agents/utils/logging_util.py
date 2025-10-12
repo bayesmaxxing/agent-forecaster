@@ -172,6 +172,22 @@ class SessionLogger:
             if result:
                 msg += f" ✓"
             return f"{timestamp} | {level_str} {msg}"
+        elif event_type == "tool_result":
+            tool_name = data.get('tool_name', 'unknown')
+            result_content = data.get('result_content', '')
+            is_error = data.get('is_error', False)
+            indent = data.get('indent', 1)
+            indent_str = "  " * indent
+            prefix = "├─"
+
+            # Truncate long results for console display
+            display_content = result_content
+            if len(display_content) > 100:
+                display_content = display_content[:97] + "..."
+
+            status = "✗" if is_error else "✓"
+            msg = f"{indent_str}{prefix} [TOOL] {status} {tool_name} → {display_content}"
+            return f"{timestamp} | {level_str} {msg}"
         elif event_type == "cycle":
             cycle_num = data.get('cycle_number', 0)
             action = data.get('action', 'Starting')
@@ -240,7 +256,7 @@ class SessionLogger:
                         agent_type: AgentType = AgentType.ORCHESTRATOR,
                         level: LogLevel = LogLevel.INFO,
                         details: Optional[str] = None,
-                        indent: int = 0):
+                        ):
         """Log an agent action with visual hierarchy."""
         self._log(
             event_type="agent_action",
@@ -249,7 +265,6 @@ class SessionLogger:
             agent_type=agent_type,
             action=action,
             details=details,
-            indent=indent
         )
 
     def log_tool_call(self,
@@ -257,7 +272,7 @@ class SessionLogger:
                      tool_name: str,
                      params: Optional[Dict[str, Any]] = None,
                      result_summary: Optional[str] = None,
-                     indent: int = 1):
+                    ):
         """Log a tool call with parameters summary."""
         self._log(
             event_type="tool_call",
@@ -267,7 +282,25 @@ class SessionLogger:
             tool_name=tool_name,
             params=params or {},
             result_summary=result_summary,
-            indent=indent
+        )
+
+    def log_tool_result(self,
+                       agent_name: str,
+                       tool_name: str,
+                       result_content: str,
+                       is_error: bool = False,
+                       tool_call_id: Optional[str] = None):
+        """Log a tool execution result."""
+        level = LogLevel.ERROR if is_error else LogLevel.SUCCESS
+        self._log(
+            event_type="tool_result",
+            level=level,
+            agent_name=agent_name,
+            agent_type=AgentType.TOOL,
+            tool_name=tool_name,
+            result_content=result_content,
+            is_error=is_error,
+            tool_call_id=tool_call_id,
         )
 
     def log_subagent_lifecycle(self,
@@ -283,7 +316,6 @@ class SessionLogger:
             agent_type=AgentType.SUBAGENT,
             action=action,
             details=details,
-            indent=1
         )
 
     def log_execution_summary(self,
@@ -303,7 +335,6 @@ class SessionLogger:
             tokens=tokens,
             success=success,
             termination_reason=termination_reason,
-            indent=1
         )
 
     def log_cycle(self, cycle_number: int, action: str = "Starting"):
@@ -360,13 +391,11 @@ class SessionLogger:
             tokens=token_data,
             content=content,
             reasoning=reasoning,
-            indent=indent
         )
 
     def log_text_block(self,
                       title: str,
                       content: str,
-                      indent: int = 1,
                       max_lines: int = 100):
         """Log a block of text with proper formatting and truncation."""
         lines = content.split('\n')
@@ -381,8 +410,7 @@ class SessionLogger:
             content=content,
             lines=lines,
             truncated=truncated,
-            total_lines=len(content.split('\n')),
-            indent=indent
+            total_lines=len(content.split('\n')),   
         )
 
     def log_raw_debug(self, message: str, level: int = logging.DEBUG):

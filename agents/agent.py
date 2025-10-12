@@ -118,7 +118,6 @@ class Agent:
                     reasoning=reasoning,
                     model=response.model if hasattr(response, 'model') else self.config.model,
                     tokens=response.usage.total_tokens if response.usage else None,
-                    indent=0
                 )
 
                 # Log tool calls
@@ -145,15 +144,19 @@ class Agent:
                     tool_dict,
                 )
                 if self.verbose:
+                    session_logger = get_session_logger()
                     for i, block in enumerate(tool_results):
                         content = block.get('content', '')
-                        summary = content
+                        is_error = block.get('is_error', False)
+                        tool_call_id = block.get('tool_call_id', '')
                         tool_name = tool_calls[i].function.name if i < len(tool_calls) else "unknown"
 
-                        session_logger.log_tool_call(
+                        session_logger.log_tool_result(
                             agent_name=self.name,
                             tool_name=tool_name,
-                            result_summary=summary
+                            result_content=content,
+                            is_error=is_error,
+                            tool_call_id=tool_call_id
                         )
                         
                 await self.history.add_message("user", tool_results)

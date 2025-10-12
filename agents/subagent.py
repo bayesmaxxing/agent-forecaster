@@ -123,8 +123,7 @@ class Subagent:
                 agent_name=self.name,
                 action="Received task",
                 agent_type=AgentType.SUBAGENT,
-                details=user_input[:100] + "..." if len(user_input) > 100 else user_input,
-                indent=1
+                details=user_input[:100] + "..." if len(user_input) > 100 else user_input
             )
         await self.history.add_message("user", user_input, None)
 
@@ -142,7 +141,6 @@ class Subagent:
                         action=f"Terminating: {reason}",
                         agent_type=AgentType.SUBAGENT,
                         level=LogLevel.WARNING,
-                        indent=1
                     )
                 break
 
@@ -173,7 +171,6 @@ class Subagent:
                     reasoning=reasoning,
                     model=response.model if hasattr(response, 'model') else self.config.model,
                     tokens=response.usage.total_tokens if response.usage else None,
-                    indent=1  # Subagent responses are indented
                 )
 
                 # Log tool calls
@@ -188,7 +185,6 @@ class Subagent:
                         agent_name=self.name,
                         tool_name=tool_call.function.name,
                         params=params_dict,
-                        indent=2
                     )
 
             await self.history.add_message(
@@ -207,19 +203,52 @@ class Subagent:
                         agent_name=self.name,
                         action=f"Terminating: {reason}",
                         agent_type=AgentType.SUBAGENT,
-                        level=level,
-                        indent=1
+                        level=level
                     )
 
                 # Still execute the termination tool call
                 if tool_calls:
                     tool_results = await execute_tools(tool_calls, tool_dict)
+
+                    if self.verbose:
+                        session_logger = get_session_logger()
+                        for i, block in enumerate(tool_results):
+                            content = block.get('content', '')
+                            is_error = block.get('is_error', False)
+                            tool_call_id = block.get('tool_call_id', '')
+                            tool_name = tool_calls[i].function.name if i < len(tool_calls) else "unknown"
+
+                            session_logger.log_tool_result(
+                                agent_name=self.name,
+                                tool_name=tool_name,
+                                result_content=content,
+                                is_error=is_error,
+                                tool_call_id=tool_call_id
+                            )
+
                     await self.history.add_message("user", tool_results)
                 break
 
             if tool_calls:
                 self.iteration_count += 1
                 tool_results = await execute_tools(tool_calls, tool_dict)
+
+                if self.verbose:
+                    session_logger = get_session_logger()
+                    for i, block in enumerate(tool_results):
+                        content = block.get('content', '')
+                        is_error = block.get('is_error', False)
+                        tool_call_id = block.get('tool_call_id', '')
+                        tool_name = tool_calls[i].function.name if i < len(tool_calls) else "unknown"
+
+                        session_logger.log_tool_result(
+                            agent_name=self.name,
+                            tool_name=tool_name,
+                            result_content=content,
+                            is_error=is_error,
+                            tool_call_id=tool_call_id
+                        )
+
                 await self.history.add_message("user", tool_results)
             else:
                 # No tool calls means natural completion
