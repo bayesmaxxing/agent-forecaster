@@ -134,6 +134,8 @@ This tool allows you to directly browse, search, and access shared memory entrie
 This tool allows you to share knowledge with past and future instances of yourself. Use this tool to store and get tips on best practices, ideas you have, and on workflows you think produce the best results. You can also use this memory to check if past instances of yourself have stored insights that can be valuable.
 
 **Don't store any memories related to the specifics of some forecast question, as this can confuse future instances of yourself.** 
+### Todays forecasts list tool
+For you to have a good idea of which forecasts your subagents have already completed, you can use this tool. It will return a list of all forecast points created on today's date.
 
 ## Enhanced Agent Collaboration
 

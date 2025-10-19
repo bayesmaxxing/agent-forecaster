@@ -96,7 +96,36 @@ class GetForecastPointsTool(Tool):
             return {"success": True, "data": response}
         except Exception as e:
             return {"success": False, "error": f"Failed to retrieve forecast points: {str(e)}"}
-    
+
+class GetPointsCreatedToday(Tool):
+    def __init__(self, model: str):
+        super().__init__(
+            name="get_points_created_today",
+            description="Use the tool to get the points created today.",
+            input_schema={
+                "type": "object",
+                "properties": {},
+            }
+        )
+        self.model = model
+        if self.model.lower() == "opus":
+            self.user_id = 18
+        elif self.model.lower() == "gpt-5":
+            self.user_id = 19
+        elif self.model.lower() == "grok":
+            self.user_id = 20
+        elif self.model.lower() == "gemini":
+            self.user_id = 21
+        elif self.model.lower() == "multi":
+            self.user_id = 22
+        else:
+            raise ValueError("Invalid model")
+
+    async def execute(self):
+        """Execute the points created today tool."""
+        response = await get_request(url_postfix=f"forecast-points/today/{self.user_id}")
+        return response
+
 class UpdateForecastTool(Tool):
     def __init__(self, model: str):
         super().__init__(
@@ -151,7 +180,7 @@ class UpdateForecastTool(Tool):
             "reason": reason,
             "user_id": 0
         }
-        print(self.user_name, self.user_password)
+        
         response = await authenticated_post_request(url_postfix=f"api/forecast-points", data=payload, user_name=self.user_name, user_password=self.user_password)
         if not response:
             return {"success": False, "error": "Failed to update forecast"}
