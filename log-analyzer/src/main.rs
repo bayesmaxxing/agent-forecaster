@@ -31,6 +31,7 @@ pub struct AppState {
     pub entries: Vec<LogEntry>,
     pub selected_index: usize,
     pub scroll_offset: usize,
+    pub details_scroll_offset: usize,  // New: scroll position for details panel
     pub tool_stats: ToolStats,
     pub token_stats: TokenStats,
     pub view_mode: ViewMode,
@@ -74,6 +75,7 @@ fn main() -> Result<()> {
         entries,
         selected_index: 0,
         scroll_offset: 0,
+        details_scroll_offset: 0,
         tool_stats,
         token_stats,
         view_mode: ViewMode::Timeline,
@@ -127,6 +129,8 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app_state: &mut AppState) -> 
                                 app_state.selected_index += 1;
                             }
                         }
+                        // Reset details scroll when changing selection
+                        app_state.details_scroll_offset = 0;
                         // Auto-scroll
                         let visible_height = 20;
                         if app_state.selected_index >= app_state.scroll_offset + visible_height {
@@ -142,10 +146,24 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app_state: &mut AppState) -> 
                                 app_state.selected_index -= 1;
                             }
                         }
+                        // Reset details scroll when changing selection
+                        app_state.details_scroll_offset = 0;
                         // Auto-scroll
                         if app_state.selected_index < app_state.scroll_offset {
                             app_state.scroll_offset = app_state.selected_index;
                         }
+                    }
+                    KeyCode::Char('h') | KeyCode::Left => {
+                        // Scroll details panel up
+                        app_state.count_prefix.clear();
+                        if app_state.details_scroll_offset > 0 {
+                            app_state.details_scroll_offset = app_state.details_scroll_offset.saturating_sub(1);
+                        }
+                    }
+                    KeyCode::Char('l') | KeyCode::Right => {
+                        // Scroll details panel down
+                        app_state.count_prefix.clear();
+                        app_state.details_scroll_offset += 1;
                     }
                     KeyCode::Char('d') => {
                         app_state.count_prefix.clear();

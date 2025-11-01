@@ -277,7 +277,7 @@ fn draw_details_panel(f: &mut Frame, area: Rect, app_state: &AppState) {
                         "Reasoning:",
                         Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD),
                     )));
-                    for line in reasoning.lines().take(10) {
+                    for line in reasoning.lines() {
                         lines.push(Line::from(format!("  {}", line)));
                     }
                 }
@@ -288,7 +288,7 @@ fn draw_details_panel(f: &mut Frame, area: Rect, app_state: &AppState) {
                         "Content:",
                         Style::default().fg(Color::Blue).add_modifier(Modifier::BOLD),
                     )));
-                    for line in content.lines().take(10) {
+                    for line in content.lines() {
                         lines.push(Line::from(format!("  {}", line)));
                     }
                 }
@@ -335,7 +335,7 @@ fn draw_details_panel(f: &mut Frame, area: Rect, app_state: &AppState) {
                     Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
                 )));
 
-                for line in result.result_content.lines().take(15) {
+                for line in result.result_content.lines() {
                     lines.push(Line::from(format!("  {}", line)));
                 }
             }
@@ -347,16 +347,33 @@ fn draw_details_panel(f: &mut Frame, area: Rect, app_state: &AppState) {
                     Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
                 )));
                 let data_str = serde_json::to_string_pretty(data).unwrap_or_default();
-                for line in data_str.lines().take(20) {
+                for line in data_str.lines() {
                     lines.push(Line::from(format!("  {}", line)));
                 }
             }
         }
     }
 
-    let text = Text::from(lines);
+    // Apply scroll offset
+    let total_lines = lines.len();
+    let visible_lines: Vec<Line> = lines
+        .into_iter()
+        .skip(app_state.details_scroll_offset)
+        .take(area.height.saturating_sub(2) as usize)
+        .collect();
+
+    let scroll_indicator = if app_state.details_scroll_offset > 0 ||
+                             app_state.details_scroll_offset + (area.height.saturating_sub(2) as usize) < total_lines {
+        format!(" (Scroll: {}/{}) [h/l to scroll]",
+                app_state.details_scroll_offset + 1,
+                total_lines.saturating_sub(area.height.saturating_sub(2) as usize).max(1))
+    } else {
+        String::new()
+    };
+
+    let text = Text::from(visible_lines);
     let paragraph = Paragraph::new(text)
-        .block(Block::default().title("Details").borders(Borders::ALL))
+        .block(Block::default().title(format!("Details{}", scroll_indicator)).borders(Borders::ALL))
         .wrap(Wrap { trim: true });
 
     f.render_widget(paragraph, area);
@@ -369,6 +386,8 @@ fn draw_help_bar(f: &mut Frame, area: Rect, app_state: &AppState) {
         Span::raw(":Quit "),
         Span::styled("[count]j/k", Style::default().fg(Color::Yellow)),
         Span::raw(":Navigate "),
+        Span::styled("h/l", Style::default().fg(Color::Yellow)),
+        Span::raw(":Scroll Details "),
         Span::styled("d", Style::default().fg(Color::Yellow)),
         Span::raw(":Details "),
         Span::styled("f", Style::default().fg(Color::Yellow)),
