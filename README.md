@@ -9,6 +9,7 @@ An experimental AI agent testbed for forecasting tasks, built with OpenRouter fo
 - **Multi-agent system**: Orchestrator-based architecture with specialized sub-agents and shared memory for complex task coordination
 - **Native forecasting tools**: Direct API integration with forecasting platform, Perplexity search, and thinking tools
 - **Comprehensive logging**: All agent activity logged to timestamped files for analysis
+- **Interactive log analyzer**: Terminal UI for visualizing agent execution, tool calls, and token usage in real-time
 
 ## Quick Start
 
@@ -16,6 +17,7 @@ An experimental AI agent testbed for forecasting tasks, built with OpenRouter fo
 - Python ≥3.13
 - uv package manager
 - OpenRouter API key
+- Rust and Cargo (optional, for log analyzer)
 
 ### Setup
 
@@ -45,6 +47,34 @@ uv run python single_agent.py -m opus|gpt-5|grok|gemini -v true
 uv run python multi_agent.py
 ```
 
+### Analyzing Logs
+
+The project includes an interactive terminal UI for analyzing agent logs built with Rust and ratatui:
+
+```bash
+# Build the log analyzer (requires Rust/Cargo)
+cd log-analyzer
+cargo build --release
+
+# Run the log analyzer on a log file
+cargo run --release ../logs/agent_YYYYMMDD_HHMMSS.jsonl
+```
+
+**Features:**
+- **Timeline view**: Chronological display of all agent events (LLM calls, tool executions, results)
+- **Tool statistics**: Real-time tracking of tool usage, success rates, and errors
+- **Token usage tracking**: Monitor token consumption per agent and across the entire session
+- **Event filtering**: Filter by event type (LLM responses, tool calls, tool results)
+- **Vim-style navigation**:
+  - `j`/`k` or arrow keys: Navigate entries
+  - `g`/`G`: Jump to first/last entry
+  - `d`: Toggle detailed view
+  - `f`: Cycle through event filters
+  - `[count]j/k`: Navigate by count (e.g., `10j` moves down 10 entries)
+  - `q`: Quit
+
+The log analyzer is particularly useful for debugging multi-agent workflows, understanding token usage patterns, and identifying bottlenecks in agent execution.
+
 ## Architecture
 
 ### Single-Agent System
@@ -71,6 +101,15 @@ agents/
 └── utils/
     ├── message_history.py   # Context window management
     └── tool_util.py         # Async tool execution
+
+log-analyzer/            # Rust-based TUI for log analysis
+├── src/
+│   ├── main.rs          # Application entry point and event loop
+│   ├── models.rs        # Log entry data structures
+│   └── ui.rs            # Terminal UI rendering
+└── Cargo.toml           # Rust dependencies
+
+logs/                    # Timestamped JSONL log files from agent runs
 ```
 
 ## Development
