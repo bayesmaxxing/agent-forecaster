@@ -236,6 +236,12 @@ class SessionLogger:
             if truncated:
                 result += f"         | {content_indent}│ ... ({total_lines - len(lines)} more lines truncated)\n"
             return result.rstrip()
+        elif event_type == "context_snapshot":
+            turn = data.get('turn_number', 0)
+            msg_count = data.get('message_count', 0)
+            tokens = data.get('total_tokens')
+            token_str = f" | {tokens:,} tokens" if tokens else ""
+            return f"{timestamp} | {level_str} [CONTEXT] Turn {turn} | {msg_count} messages{token_str}"
         elif event_type == "debug":
             msg = data.get('message', '')
             return f"{timestamp} | {level_str} {msg}"
@@ -421,6 +427,22 @@ class SessionLogger:
                 level=LogLevel.DEBUG,
                 message=message
             )
+
+    def log_context_snapshot(self,
+                            agent_name: str,
+                            messages: list,
+                            turn_number: int,
+                            total_tokens: Optional[int] = None):
+        """Log a snapshot of the entire conversation context at a specific turn."""
+        self._log(
+            event_type="context_snapshot",
+            level=LogLevel.DEBUG,
+            agent_name=agent_name,
+            turn_number=turn_number,
+            messages=messages,
+            total_tokens=total_tokens,
+            message_count=len(messages)
+        )
 
 
 # Global session logger instance

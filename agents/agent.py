@@ -93,11 +93,23 @@ class Agent:
         await self.history.add_message("user", user_input, None)
 
         tool_dict = {tool.name: tool for tool in self.tools}
+        turn_number = 0
 
         while True:
+            turn_number += 1
             self.history.truncate()
             params = self._prepare_api_params()
-            
+
+            # Log the full context at this turn
+            if self.verbose:
+                session_logger = get_session_logger()
+                session_logger.log_context_snapshot(
+                    agent_name=self.name,
+                    messages=params["messages"],
+                    turn_number=turn_number,
+                    total_tokens=None  # We don't know token count until after the response
+                )
+
             response = self.client.chat.completions.create(**params)
 
             message = response.choices[0].message
