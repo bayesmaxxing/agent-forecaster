@@ -3,6 +3,8 @@ from ..utils import post_request, get_request, authenticated_post_request
 from .base import Tool
 import dotenv
 import os
+from datetime import datetime
+
 dotenv.load_dotenv()
 
 class GetForecastsTool(Tool):
@@ -104,7 +106,12 @@ class GetPointsCreatedToday(Tool):
             description="Use the tool to get the points created today.",
             input_schema={
                 "type": "object",
-                "properties": {},
+                "properties": {
+                    "date": {
+                        "type": "string",
+                        "description": "The date to get the points created for."
+                    }
+                },
             }
         )
         self.model = model
@@ -121,9 +128,13 @@ class GetPointsCreatedToday(Tool):
         else:
             raise ValueError("Invalid model")
 
-    async def execute(self):
+    async def execute(self, date: str = None):
         """Execute the points created today tool."""
-        response = await get_request(url_postfix=f"forecast-points/today/{self.user_id}")
+        if date is None:
+            date = datetime.now().strftime("%Y-%m-%d")
+        else:
+            date = datetime.strptime(date, "%Y-%m-%d").strftime("%Y-%m-%d")
+        response = await get_request(url_postfix=f"forecast-points/date/{self.user_id}?date={date}")
         return response
 
 class UpdateForecastTool(Tool):
