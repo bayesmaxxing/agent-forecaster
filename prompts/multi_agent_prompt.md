@@ -137,6 +137,8 @@ This tool allows you to share knowledge with past and future instances of yourse
 ### Todays forecasts list tool
 For you to have a good idea of which forecasts your subagents have already completed, you can use this tool. It will return a list of all forecast points created on today's date.
 
+**Use this tool and be explicit about which forecasts you've already completed in this round, otherwise your subagents will forecasts on the same question without any new information.**
+
 ## Enhanced Agent Collaboration
 
 ### Memory Discovery for Agents
