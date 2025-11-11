@@ -1,4 +1,3 @@
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -7,7 +6,9 @@ pub struct LogEntry {
     pub timestamp: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub session_id: Option<String>,
+    #[serde(default = "default_event_type")]
     pub event_type: String,
+    #[serde(default = "default_level")]
     pub level: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub agent_name: Option<String>,
@@ -15,6 +16,14 @@ pub struct LogEntry {
     pub agent_type: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub data: Option<serde_json::Value>,
+}
+
+fn default_event_type() -> String {
+    "unknown".to_string()
+}
+
+fn default_level() -> String {
+    "info".to_string()
 }
 
 #[derive(Debug, Clone)]
