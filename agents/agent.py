@@ -15,6 +15,28 @@ from .utils.history_util import MessageHistory
 from .utils.tool_util import execute_tools
 from .utils.logging_util import get_session_logger, AgentType, LogLevel
 
+
+def extract_text_reasoning(reasoning_details) -> str | None:
+    """Extract only text reasoning, filtering out encrypted blobs."""
+    if not reasoning_details:
+        return None
+    
+    # If it's a list (Gemini format with multiple reasoning blocks)
+    if isinstance(reasoning_details, list):
+        text_parts = []
+        for item in reasoning_details:
+            if isinstance(item, dict) and item.get('type') == 'reasoning.text':
+                text = item.get('text', '')
+                if text:
+                    text_parts.append(text)
+        return '\n\n'.join(text_parts) if text_parts else None
+    
+    # If it's a string, return as-is
+    if isinstance(reasoning_details, str):
+        return reasoning_details
+    
+    return None
+
 @dataclass
 class ModelConfig:
     """Configuration settings for OpenRouter model parameters."""
@@ -115,18 +137,19 @@ class Agent:
             message = response.choices[0].message
             tool_calls = message.tool_calls or []
 
+            # Extract only text reasoning (filter out encrypted blobs)
+            reasoning_text = None
+            if hasattr(message, 'reasoning_details') and message.reasoning_details:
+                reasoning_text = extract_text_reasoning(message.reasoning_details)
+
             if self.verbose:
                 session_logger = get_session_logger()
-
-                reasoning_details = None
-                if hasattr(message, 'reasoning_details') and message.reasoning_details:
-                    reasoning_details = message.reasoning_details
 
                 # Log the full LLM response
                 session_logger.log_llm_response(
                     agent_name=self.name,
                     content=message.content,
-                    reasoning=reasoning_details,
+                    reasoning=reasoning_text,
                     model=response.model if hasattr(response, 'model') else self.config.model,
                     tokens=response.usage.total_tokens if response.usage else None,
                 )
@@ -146,7 +169,7 @@ class Agent:
                     )
             
             await self.history.add_message(
-                "assistant", message, reasoning_details, response.usage
+                "assistant", message, reasoning_text, response.usage
             )
 
             if tool_calls:
