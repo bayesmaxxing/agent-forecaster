@@ -10,7 +10,8 @@ from datetime import datetime
 from agents.agent import Agent, ModelConfig
 from agents.tools import SubagentManagerTool, SharedMemoryManagerTool
 from agents.tools.forecasting_tools import GetPointsCreatedToday
-from agents.tools.shared_memory_tool import SharedMemoryTool, PersistentMemoryTool
+from agents.tools.shared_memory_tool import SharedMemoryTool
+from agents.tools.persistent_memory_tool import PersistentMemoryTool
 from agents.utils.logging_util import set_session_logger, cleanup_session_logger
 
 def setup_environment():
@@ -50,26 +51,15 @@ async def main(model: str, verbose: bool):
     if not setup_environment():
         return
     
-    if model.lower() == "gemini":
-        model_name = "google/gemini-2.5-pro"
-    elif model.lower() == "gpt-5":
-        model_name = "openai/gpt-5"
-    elif model.lower() == "grok":
-        model_name = "x-ai/grok-4"
-    elif model.lower() == "opus":
-        model_name = "anthropic/claude-opus-4.1"
-    elif model.lower() == "multi":
-        model_name = "anthropic/claude-sonnet-4.5"
-    else:
-        print("❌ Invalid model. Please choose between Gemini, GPT-5, Grok, Opus, or Multi.")
-        return
+    if model.lower() == "multi":
+        model_name = "google/gemini-3-pro-preview"
     
     # Configure the agent
     config = ModelConfig(
         model=model_name,
         max_tokens=8192,
-        temperature=1.0,
-        context_window_tokens=80000
+        temperature=0.8,
+        context_window_tokens=400000
     )
     current_date = datetime.now().strftime("%Y-%m-%d")
     
@@ -150,17 +140,10 @@ async def main(model: str, verbose: bool):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Forecasting Agent")
-    parser.add_argument("-m", "--model", type=str, default="grok", help="Model to use. Choose between Anthropic Opus, OpenAI GPT-5, or Grok")
     parser.add_argument("-v", "--verbose", type=bool, default=False, help="Verbose mode")
 
     args = parser.parse_args()
 
-    if args.model.lower() not in ["opus", "gpt-5", "grok", "gemini", "multi"]:
-        print("❌ Invalid model. Please choose between Anthropic Opus, OpenAI GPT-5, Grok, or Gemini.")
-        exit()
-    
-    
-    print(f"Running with model: {args.model}")
     print(f"Running with verbose: {args.verbose}")
     print("Check logs/ directory for detailed session logs with improved formatting.")
     setup_environment()

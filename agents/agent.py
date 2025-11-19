@@ -90,14 +90,14 @@ class Agent:
                 action=f"Received task",
                 details=user_input[:100] + "..." if len(user_input) > 100 else user_input
             )
-        await self.history.add_message("user", user_input, None)
+        await self.history.add_message("user", user_input)
 
         tool_dict = {tool.name: tool for tool in self.tools}
         turn_number = 0
 
         while True:
             turn_number += 1
-            self.history.truncate()
+            self.history.compact()
             params = self._prepare_api_params()
 
             # Log the full context at this turn
@@ -118,16 +118,15 @@ class Agent:
             if self.verbose:
                 session_logger = get_session_logger()
 
-                # Extract reasoning if available (for models that support it)
-                reasoning = None
-                if hasattr(message, 'reasoning') and message.reasoning:
-                    reasoning = message.reasoning
+                reasoning_details = None
+                if hasattr(message, 'reasoning_details') and message.reasoning_details:
+                    reasoning_details = message.reasoning_details
 
                 # Log the full LLM response
                 session_logger.log_llm_response(
                     agent_name=self.name,
                     content=message.content,
-                    reasoning=reasoning,
+                    reasoning=reasoning_details,
                     model=response.model if hasattr(response, 'model') else self.config.model,
                     tokens=response.usage.total_tokens if response.usage else None,
                 )
@@ -147,7 +146,7 @@ class Agent:
                     )
             
             await self.history.add_message(
-                "assistant", message, response.usage
+                "assistant", message, reasoning_details, response.usage
             )
 
             if tool_calls:

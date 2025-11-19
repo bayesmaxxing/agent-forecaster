@@ -125,7 +125,7 @@ class Subagent:
                 agent_type=AgentType.SUBAGENT,
                 details=user_input[:100] + "..." if len(user_input) > 100 else user_input
             )
-        await self.history.add_message("user", user_input, None)
+        await self.history.add_message("user", user_input)
 
         tool_dict = {tool.name: tool for tool in self.tools}
 
@@ -144,7 +144,7 @@ class Subagent:
                     )
                 break
 
-            self.history.truncate()
+            self.history.compact()
             params = self._prepare_api_params()
 
             response = self.client.chat.completions.create(**params)
@@ -156,19 +156,19 @@ class Subagent:
             message = response.choices[0].message
             tool_calls = message.tool_calls or []
 
+            # Extract reasoning_details if present
+            reasoning_details = None
+            if hasattr(message, 'reasoning_details') and message.reasoning_details:
+                reasoning_details = message.reasoning_details
+
             if self.verbose:
                 session_logger = get_session_logger()
-
-                # Extract reasoning if available (for models that support it)
-                reasoning = None
-                if hasattr(message, 'reasoning') and message.reasoning:
-                    reasoning = message.reasoning
 
                 # Log the full LLM response
                 session_logger.log_llm_response(
                     agent_name=self.name,
                     content=message.content,
-                    reasoning=reasoning,
+                    reasoning=reasoning_details,
                     model=response.model if hasattr(response, 'model') else self.config.model,
                     tokens=response.usage.total_tokens if response.usage else None,
                 )
@@ -188,7 +188,7 @@ class Subagent:
                     )
 
             await self.history.add_message(
-                "assistant", message, response.usage
+                "assistant", message, reasoning_details, response.usage
             )
 
             # Check for termination tools before executing
@@ -256,8 +256,26 @@ class Subagent:
                 self.termination_reason = "natural_completion"
                 break
 
+        # Extract only serializable parts from the message
+        final_message_data = {
+            "content": message.content,
+            "role": "assistant"
+        }
+        if message.tool_calls:
+            final_message_data["tool_calls"] = [
+                {
+                    "id": tc.id,
+                    "type": "function",
+                    "function": {
+                        "name": tc.function.name,
+                        "arguments": tc.function.arguments
+                    }
+                }
+                for tc in message.tool_calls
+            ]
+        
         return {
-            "final_message": message,
+            "final_message": final_message_data,
             "termination_reason": self.termination_reason,
             "completed_successfully": self.completed_successfully,
             "iteration_count": self.iteration_count,

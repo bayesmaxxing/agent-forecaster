@@ -46,7 +46,7 @@ class SubagentManagerTool(Tool):
                     "model": {
                         "type": "string",
                         "description": "Model to use for this subagent (required for create action)",
-                        "enum": ["x-ai/grok-4-fast", "openai/gpt-5", "google/gemini-2.5-flash-preview-09-2025"]
+                        "enum": ["x-ai/grok-4-fast", "google/gemini-3-pro-preview", "anthropic/claude-haiku-4.5"]
                     },
                     "max_iterations": {
                         "type": "integer",
@@ -157,7 +157,7 @@ class SubagentManagerTool(Tool):
 
         config = SubagentConfig(
             model=model,
-            max_tokens=8192,
+            max_tokens=30000,
             temperature=1.0,
             max_iterations=max_iterations,
             max_total_tokens=200000,
@@ -184,6 +184,7 @@ class SubagentManagerTool(Tool):
 
             # Format detailed execution report
             status_emoji = "✅" if result["completed_successfully"] else "❌"
+            final_content = result["final_message"].get("content", "") if result["final_message"] else ""
             report = f"""
 SUBAGENT EXECUTION REPORT: {name} {status_emoji}
 ================================================
@@ -196,7 +197,7 @@ EXECUTION SUMMARY:
 - Tokens Used: {result["total_tokens_used"]}
 
 FINAL OUTPUT:
-{result["final_message"].content if result["final_message"].content else "No final message content"}
+{final_content if final_content else "No final message content"}
 
 {'=' * 50}
 """

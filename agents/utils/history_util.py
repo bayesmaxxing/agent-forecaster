@@ -1,7 +1,8 @@
 """Message history with token tracking and prompt caching."""
 
 from typing import Any
-
+from openai import OpenAI
+import os
 
 class MessageHistory:
     """Manages chat history with token tracking and context management."""
@@ -39,6 +40,7 @@ class MessageHistory:
         self,
         role: str,
         content: str | list[dict[str, Any]] | Any,
+        reasoning_details: str = "",
         usage: Any | None = None,
     ):
         """Add a message to the history and track token usage."""
@@ -47,8 +49,11 @@ class MessageHistory:
             # This is an OpenAI ChatCompletion message
             message = {
                 "role": role,
-                "content": content.content
+                "content": content.content,
             }
+            # Only add reasoning_details to assistant messages when it exists
+            if role == "assistant" and reasoning_details:
+                message["reasoning_details"] = reasoning_details
             if content.tool_calls:
                 message["tool_calls"] = [
                     {
@@ -73,6 +78,9 @@ class MessageHistory:
             return  # Don't add the list as a single message
         elif isinstance(content, str):
             message = {"role": role, "content": content}
+            # Only add reasoning_details to assistant messages when it exists
+            if role == "assistant" and reasoning_details:
+                message["reasoning_details"] = reasoning_details
         elif isinstance(content, list):
             # Handle legacy format or tool results
             if all(isinstance(item, dict) and 'content' in item for item in content):
@@ -83,8 +91,14 @@ class MessageHistory:
                 }
             else:
                 message = {"role": role, "content": str(content)}
+                # Only add reasoning_details to assistant messages when it exists
+                if role == "assistant" and reasoning_details:
+                    message["reasoning_details"] = reasoning_details
         else:
             message = {"role": role, "content": str(content)}
+            # Only add reasoning_details to assistant messages when it exists
+            if role == "assistant" and reasoning_details:
+                message["reasoning_details"] = reasoning_details
 
         self.messages.append(message)
 
@@ -96,6 +110,93 @@ class MessageHistory:
             current_turn_input = total_input - self.total_tokens
             self.message_tokens.append((current_turn_input, output_tokens))
             self.total_tokens += current_turn_input + output_tokens
+
+
+    def compact(self, keep_recent: int = 3) -> None:
+        """Compact the message history by summarizing older messages."""
+        # Only compact if we are approaching the context limit (e.g. > 90% full)
+        # or if explicitly requested (logic can be adjusted)
+        if self.total_tokens < self.context_window_tokens * 0.9:
+            return
+
+        if len(self.messages) <= keep_recent:
+            return
+
+        # Separate messages to summarize and messages to keep
+        to_summarize = self.messages[:-keep_recent]
+        recent_messages = self.messages[-keep_recent:]
+
+        # Prepare prompt for summarization
+        summary_system_prompt = (
+            "You are a helpful assistant that summarizes the message history of AI agents. "
+            "Summarize the provided conversation history into a concise but comprehensive narrative. "
+            "Include key decisions, actions taken, tool outputs, and important information gathered. "
+            "The summary will be used as context for the agent to continue its task."
+        )
+
+        # Format messages for the summarizer
+        summary_content = ""
+        for msg in to_summarize:
+            role = msg.get("role", "unknown")
+            content = msg.get("content", "")
+            if isinstance(content, list): 
+                 content = str(content)
+            
+            summary_content += f"{role.upper()}: {content}\n\n"
+            
+            if "tool_calls" in msg:
+                for tc in msg["tool_calls"]:
+                    func = tc.get("function", {})
+                    name = func.get("name", "unknown")
+                    args = func.get("arguments", "")
+                    summary_content += f"TOOL_CALL ({name}): {args}\n\n"
+
+        messages_for_summary = [
+            {"role": "system", "content": summary_system_prompt},
+            {"role": "user", "content": f"Here is the conversation history to summarize:\n\n{summary_content}"}
+        ]
+
+        # Call LLM for summary using the existing client
+        # We try to use a fast model for summarization
+        try:
+             response = self.client.chat.completions.create(
+                model="anthropic/claude-haiku-4.5",
+                messages=messages_for_summary,
+                max_tokens=10000
+            )
+             summary_text = response.choices[0].message.content
+        except Exception as e:
+            # Fallback to standard truncation if summarization fails
+            print(f"Compaction failed: {e}. Falling back to truncation.")
+            self.truncate()
+            return
+
+        # We insert this as a user message with context info
+        summary_message = {
+            "role": "user", 
+            "content": f"[Previous Context Summary]: {summary_text}",
+        }
+
+        self.messages = [summary_message] + recent_messages
+        
+        # Recalculate token usage estimate
+        try:
+            sys_tokens = len(self.system) / 4
+        except:
+            sys_tokens = 0
+            
+        summary_tokens = len(summary_text) / 4
+        
+        recent_tokens = 0
+        for msg in recent_messages:
+            content = str(msg.get("content", ""))
+            recent_tokens += len(content) / 4
+            
+        self.total_tokens = int(sys_tokens + summary_tokens + recent_tokens)
+        
+        # Reset message_tokens as the correspondence is lost
+        self.message_tokens = []
+        
 
     def truncate(self) -> None:
         """Remove oldest messages when context window limit is exceeded."""
@@ -143,6 +244,9 @@ class MessageHistory:
         formatted_messages = []
         for m in self.messages:
             message = {"role": m["role"], "content": m["content"]}
+            # Only include reasoning_details for assistant messages when it exists
+            if m["role"] == "assistant" and "reasoning_details" in m and m["reasoning_details"]:
+                message["reasoning_details"] = m["reasoning_details"]
             # Include tool_calls if present
             if "tool_calls" in m:
                 message["tool_calls"] = m["tool_calls"]
