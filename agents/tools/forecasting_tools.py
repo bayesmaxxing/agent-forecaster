@@ -35,7 +35,7 @@ class GetForecastsTool(Tool):
     async def execute(self):
         """Execute the forecasting tools."""
         
-        response = await get_request(url_postfix=f"forecasts/stale-and-new/{self.user_id}")
+        response = await get_request(url_postfix=f"forecasts/llm/{self.user_id}")
         return response
     
 class GetForecastDataTool(Tool):
@@ -109,7 +109,7 @@ class GetPointsCreatedToday(Tool):
                 "properties": {
                     "date": {
                         "type": "string",
-                        "description": "The date to get the points created for."
+                        "description": "The date to get the points created for. Format: YYYY-MM-DD (e.g., '2025-11-19'). If not provided, uses current date."
                     }
                 },
             }
@@ -131,10 +131,25 @@ class GetPointsCreatedToday(Tool):
     async def execute(self, date: str = None):
         """Execute the points created today tool."""
         if date is None:
-            date = datetime.now().strftime("%Y-%m-%d")
+            # Use current datetime with Z suffix for UTC
+            date = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
         else:
-            date = datetime.strptime(date, "%Y-%m-%d").strftime("%Y-%m-%d")
-        response = await get_request(url_postfix=f"forecast-points/date/{self.user_id}?date={date}")
+            # Try to parse different date formats
+            try:
+                # Try full datetime format first
+                parsed_date = datetime.strptime(date, "%Y-%m-%dT%H:%M:%S")
+            except ValueError:
+                try:
+                    # Try date-only format (YYYY-MM-DD)
+                    parsed_date = datetime.strptime(date, "%Y-%m-%d")
+                except ValueError:
+                    # Try with Z suffix
+                    parsed_date = datetime.strptime(date, "%Y-%m-%dT%H:%M:%SZ")
+            
+            # Format with Z suffix as Go endpoint expects
+            date = parsed_date.strftime("%Y-%m-%dT%H:%M:%SZ")
+        
+        response = await get_request(url_postfix=f"forecast-points?user_id={self.user_id}&date={date}")
         return response
 
 class UpdateForecastTool(Tool):

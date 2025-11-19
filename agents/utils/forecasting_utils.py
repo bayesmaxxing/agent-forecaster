@@ -32,6 +32,11 @@ async def post_request(url_postfix: str, data: Any) -> Any:
 
     async with httpx.AsyncClient() as client:
         response = await client.post(url, json=data, headers=headers)
+        
+        # Check if request was successful
+        if response.status_code not in [200, 201]:
+            raise Exception(f"HTTP {response.status_code}: {response.text[:200]}")
+        
         return response.json()
 
 async def get_request(url_postfix: str) -> Any:
@@ -43,6 +48,11 @@ async def get_request(url_postfix: str) -> Any:
 
     async with httpx.AsyncClient() as client:
         response = await client.get(url, headers=headers)
+        
+        # Check if request was successful
+        if response.status_code != 200:
+            raise Exception(f"HTTP {response.status_code}: {response.text[:200]}")
+        
         return response.json()
     
 async def put_request(url_postfix: str, data: Any, user_name: str, user_password: str) -> Any:
@@ -56,6 +66,11 @@ async def put_request(url_postfix: str, data: Any, user_name: str, user_password
 
     async with httpx.AsyncClient() as client:
         response = await client.put(url, json=data, headers=headers)
+        
+        # Check if request was successful
+        if response.status_code not in [200, 201]:
+            raise Exception(f"HTTP {response.status_code}: {response.text[:200]}")
+        
         return response.json()
 
 
@@ -79,4 +94,9 @@ async def authenticated_post_request(url_postfix: str, data: Any, user_name: str
 
     async with httpx.AsyncClient() as client:
         response = await client.post(url, json=data, headers=headers)
+        
+        # Check if request was successful
+        if response.status_code not in [200, 201]:
+            raise Exception(f"HTTP {response.status_code}: {response.text[:200]}")
+        
         return response.json()
