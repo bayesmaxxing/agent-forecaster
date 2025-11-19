@@ -19,6 +19,8 @@ class PersistentMemoryEntry:
     metadata: Dict[str, Any]
     timestamp: str
     tags: List[str]
+    agent_name: str = "unknown"
+    task_id: str = "default"
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
@@ -92,7 +94,9 @@ class PersistentMemory:
                 content=content,
                 metadata=metadata or {},
                 timestamp=datetime.now().isoformat(),
-                tags=tags or []
+                tags=tags or [],
+                agent_name=agent_name,
+                task_id=task_id
             )
 
             self._memory[entry_id] = entry
