@@ -51,8 +51,12 @@ async def main(model: str, verbose: bool):
     if not setup_environment():
         return
     
-    if model.lower() == "multi":
+    if model.lower() == "gemini":
         model_name = "google/gemini-3-pro-preview"
+    elif model.lower() == "claude":
+        model_name = "anthropic/claude-opus-4.5"
+    elif model.lower() == "multi":
+        model_name = "openai/gpt-5"
     
     # Configure the agent
     config = ModelConfig(
@@ -64,7 +68,7 @@ async def main(model: str, verbose: bool):
     current_date = datetime.now().strftime("%Y-%m-%d")
     
     
-    system_prompt = open("prompts/multi_agent_prompt.md", "r").read()
+    system_prompt = open("prompts/multi_agent_prompt_v2.md", "r").read()
     system_prompt = system_prompt.replace("{current_date}", current_date)
 
     subagent_tool = SubagentManagerTool()
@@ -72,7 +76,7 @@ async def main(model: str, verbose: bool):
     shared_memory_tool = SharedMemoryTool(agent_name="Orchestrator", task_id="multi_agent_session")
 
     persistent_memory_tool = PersistentMemoryTool()
-    get_points_created_today_tool = GetPointsCreatedToday(model=model)
+    get_points_created_today_tool = GetPointsCreatedToday(model="multi")
 
     # Create the Orchestrator agent
     agent = Agent(
@@ -141,10 +145,10 @@ async def main(model: str, verbose: bool):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Forecasting Agent")
     parser.add_argument("-v", "--verbose", type=bool, default=False, help="Verbose mode")
-
+    parser.add_argument("-m", "--model", type=str, default="multi", help="Model to use. Choose between Gemini, Claude, or Multi")
     args = parser.parse_args()
 
     print(f"Running with verbose: {args.verbose}")
     print("Check logs/ directory for detailed session logs with improved formatting.")
     setup_environment()
-    asyncio.run(main("multi", args.verbose))
+    asyncio.run(main(args.model, args.verbose))

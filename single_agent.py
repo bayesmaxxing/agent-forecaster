@@ -39,13 +39,13 @@ async def main(model: str, verbose: bool):
         return
     
     if model.lower() == "gemini":
-        model_name = "google/gemini-2.5-pro"
+        model_name = "google/gemini-3-pro-preview"
     elif model.lower() == "gpt-5":
         model_name = "openai/gpt-5"
     elif model.lower() == "grok":
-        model_name = "x-ai/grok-4"
+        model_name = "x-ai/grok-4.1-fast"
     elif model.lower() == "opus":
-        model_name = "anthropic/claude-opus-4.1"
+        model_name = "anthropic/claude-opus-4.5"
     else:
         print("❌ Invalid model. Please choose between Gemini, GPT-5, Grok, or Opus.")
         return
