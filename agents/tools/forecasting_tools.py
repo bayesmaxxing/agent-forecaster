@@ -94,7 +94,7 @@ class GetForecastPointsTool(Tool):
     async def execute(self, forecast_id: int):
         """Execute the forecasting tools."""
         try:
-            response = await get_request(url_postfix=f"forecast-points?forecast_id={forecast_id}&user_id={self.user_id}")
+            response = await post_request(url_postfix=f"forecast-points/user", data={"forecast_id": forecast_id, "user_id": self.user_id})
             return {"success": True, "data": response}
         except Exception as e:
             return {"success": False, "error": f"Failed to retrieve forecast points: {str(e)}"}
@@ -128,9 +128,27 @@ class GetPointsCreatedToday(Tool):
         else:
             raise ValueError("Invalid model")
 
-    async def execute(self, date: str = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")):
+    async def execute(self, date: str = None):
         """Execute the points created today tool."""
-        date = datetime.strptime(date, "%Y-%m-%dT%H:%M:%SZ")
+        if date is None:
+            # Use current datetime with Z suffix for UTC
+            date = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
+        else:
+            # Try to parse different date formats
+            try:
+                # Try full datetime format first
+                parsed_date = datetime.strptime(date, "%Y-%m-%dT%H:%M:%S")
+            except ValueError:
+                try:
+                    # Try date-only format (YYYY-MM-DD)
+                    parsed_date = datetime.strptime(date, "%Y-%m-%d")
+                except ValueError:
+                    # Try with Z suffix
+                    parsed_date = datetime.strptime(date, "%Y-%m-%dT%H:%M:%SZ")
+            
+            # Format with Z suffix as Go endpoint expects
+            date = parsed_date.strftime("%Y-%m-%dT%H:%M:%SZ")
+        
         response = await get_request(url_postfix=f"forecast-points?user_id={self.user_id}&date={date}")
         return response
 
