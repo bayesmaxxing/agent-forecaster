@@ -40,10 +40,17 @@ class MessageHistory:
         self,
         role: str,
         content: str | list[dict[str, Any]] | Any,
-        reasoning_details: str = "",
+        reasoning_details: Any = None,
         usage: Any | None = None,
     ):
-        """Add a message to the history and track token usage."""
+        """Add a message to the history and track token usage.
+
+        Args:
+            reasoning_details: Can be either:
+                - Full structure (list/dict) for models like Gemini that require complete reasoning blocks
+                - Extracted text string for logging purposes
+                - None if no reasoning details present
+        """
         # Handle OpenAI message format
         if hasattr(content, 'content') and hasattr(content, 'tool_calls'):
             # This is an OpenAI ChatCompletion message
@@ -61,7 +68,8 @@ class MessageHistory:
                         "type": "function",
                         "function": {
                             "name": tc.function.name,
-                            "arguments": tc.function.arguments
+                            # Convert None/null to empty JSON object "{}" for OpenRouter compatibility
+                            "arguments": tc.function.arguments if tc.function.arguments is not None else "{}"
                         }
                     }
                     for tc in content.tool_calls
@@ -242,11 +250,26 @@ class MessageHistory:
         """Format messages for OpenAI API."""
         # Include all fields from messages, not just role and content
         formatted_messages = []
+
+        # Check if model supports reasoning_details preservation
+        # Models like Gemini, Claude Opus, and o1 support extended reasoning
+        # According to OpenRouter docs, reasoning functionality "works identically across all supported reasoning models"
+        model_lower = self.model.lower()
+        supports_reasoning = any([
+            "gemini" in model_lower,
+            "claude-opus" in model_lower,
+            "claude-sonnet" in model_lower,
+            "o1" in model_lower,
+            "o3" in model_lower,
+        ])
+
         for m in self.messages:
             message = {"role": m["role"], "content": m["content"]}
-            # Only include reasoning_details for assistant messages when it exists
-            if m["role"] == "assistant" and "reasoning_details" in m and m["reasoning_details"]:
+
+            # Include reasoning_details for models that support it
+            if supports_reasoning and m["role"] == "assistant" and "reasoning_details" in m and m["reasoning_details"]:
                 message["reasoning_details"] = m["reasoning_details"]
+
             # Include tool_calls if present
             if "tool_calls" in m:
                 message["tool_calls"] = m["tool_calls"]

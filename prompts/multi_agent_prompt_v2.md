@@ -253,7 +253,7 @@ Use this to:
 **Purpose**: Check which forecasts have already been completed today (to avoid duplicates).
 
 **Parameters**:
-- `date` (optional) - Defaults to today in format YYYY-MM-DD
+- `date` - Defaults to today in format YYYY-MM-DD
 
 **Usage**:
 - Call this at the start of each cycle to see what's already done

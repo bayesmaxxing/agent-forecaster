@@ -12,11 +12,15 @@ async def _execute_single_tool(
     tool_call_id = call.id
     tool_name = call.function.name
     
-    # Parse arguments (they come as a JSON string)
+    # Parse arguments (they come as a JSON string, or may be None/null)
     import json
     try:
-        tool_args = json.loads(call.function.arguments)
-    except json.JSONDecodeError:
+        # Handle None/null arguments (some models return null for tools with no parameters)
+        if call.function.arguments is None or call.function.arguments == "null":
+            tool_args = {}
+        else:
+            tool_args = json.loads(call.function.arguments)
+    except (json.JSONDecodeError, TypeError):
         tool_args = {}
     
     response = {

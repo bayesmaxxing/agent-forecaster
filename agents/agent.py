@@ -137,10 +137,13 @@ class Agent:
             message = response.choices[0].message
             tool_calls = message.tool_calls or []
 
-            # Extract only text reasoning (filter out encrypted blobs)
+            # Extract text reasoning for logging (filter out encrypted blobs)
+            # But preserve full reasoning_details for API requests (required by Gemini)
             reasoning_text = None
+            full_reasoning_details = None
             if hasattr(message, 'reasoning_details') and message.reasoning_details:
                 reasoning_text = extract_text_reasoning(message.reasoning_details)
+                full_reasoning_details = message.reasoning_details
 
             if self.verbose:
                 session_logger = get_session_logger()
@@ -167,9 +170,9 @@ class Agent:
                         tool_name=tool_call.function.name,
                         params=params_dict
                     )
-            
+
             await self.history.add_message(
-                "assistant", message, reasoning_text, response.usage
+                "assistant", message, full_reasoning_details, response.usage
             )
 
             if tool_calls:
