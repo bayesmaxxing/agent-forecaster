@@ -10,3 +10,4 @@
 # Shared memory 
 shared_memory/
 /log-analyzer/target/
+/persistent_memory
