@@ -3,6 +3,12 @@
 .venv
 .DS_Store
 
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
 # Agent logs
 /logs/*.log
 /sub_agent_logs/*.log

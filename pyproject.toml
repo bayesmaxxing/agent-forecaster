@@ -10,4 +10,6 @@ dependencies = [
     "mcp>=1.9.2",
     "requests>=2.32.3",
     "docker>=7.1.0",
+    "textual>=0.47.0",
+    "watchfiles>=0.21.0",
 ]
