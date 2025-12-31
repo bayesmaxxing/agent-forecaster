@@ -5,10 +5,13 @@ from textual.binding import Binding
 from textual.containers import Container, Horizontal, Vertical
 from textual.widgets import Header, Footer, Static
 from .screens.session_picker import SessionPickerScreen
+from .screens.help_screen import HelpScreen
+from .screens.filter_screen import FilterScreen
 from .widgets.agent_tree import AgentTreeWidget
 from .widgets.event_list import EventListWidget
 from .widgets.timeline import Timeline
 from .widgets.event_inspector import EventInspector
+from .widgets.metrics_panel import MetricsPanel
 from .streams import LogReader, EventProcessor
 from .models.session import SessionModel
 
@@ -101,6 +104,10 @@ class AgentForecasterTUI(App):
         Binding("q", "quit", "Quit"),
         Binding("r", "reload", "Reload"),
         Binding("s", "switch_session", "Switch Session"),
+        Binding("f1", "help", "Help"),
+        Binding("?", "help", "Help"),
+        Binding("f", "filter", "Filter Events"),
+        Binding("/", "search", "Search"),
     ]
 
     def __init__(self, session_id: str | None = None, live_mode: bool = False):
@@ -216,6 +223,27 @@ class AgentForecasterTUI(App):
     def action_switch_session(self) -> None:
         """Switch to a different session."""
         self.push_screen(SessionPickerScreen(), self.on_session_selected)
+
+    def action_help(self) -> None:
+        """Show help screen."""
+        self.push_screen(HelpScreen())
+
+    def action_filter(self) -> None:
+        """Show filter screen."""
+        self.push_screen(FilterScreen(), self.on_filter_applied)
+
+    def on_filter_applied(self, filters: dict | None) -> None:
+        """Handle filter application."""
+        if filters:
+            # Apply filters to event list (to be implemented)
+            self.notify(f"Filters applied: {len(filters)} active")
+        else:
+            self.notify("Filters cleared")
+
+    def action_search(self) -> None:
+        """Show search dialog."""
+        # Placeholder for search functionality
+        self.notify("Search feature coming in Phase 4", severity="information")
 
 
 def run_tui(session_id: str | None = None, live_mode: bool = False):
