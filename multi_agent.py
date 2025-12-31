@@ -63,7 +63,7 @@ async def main(model: str, verbose: bool):
         model=model_name,
         max_tokens=8192,
         temperature=0.8,
-        context_window_tokens=400000
+        context_window_tokens=200000
     )
     current_date = datetime.now().strftime("%Y-%m-%d")
     

@@ -278,6 +278,7 @@ class SessionLogger:
                      tool_name: str,
                      params: Optional[Dict[str, Any]] = None,
                      result_summary: Optional[str] = None,
+                     tool_call_id: Optional[str] = None,
                     ):
         """Log a tool call with parameters summary."""
         self._log(
@@ -288,6 +289,7 @@ class SessionLogger:
             tool_name=tool_name,
             params=params or {},
             result_summary=result_summary,
+            tool_call_id=tool_call_id,
         )
 
     def log_tool_result(self,

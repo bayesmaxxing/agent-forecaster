@@ -14,6 +14,7 @@ class TimelineEvent:
     agent_type: Optional[str]
     level: str
     data: Dict[str, Any] = field(default_factory=dict)
+    session_id: Optional[str] = None  # Session ID from top-level field
 
     # For timeline visualization
     duration: Optional[float] = None  # Duration in seconds (for spans)
@@ -34,7 +35,8 @@ class TimelineEvent:
             agent_name=entry.get("agent_name"),
             agent_type=entry.get("agent_type"),
             level=entry.get("level", "info"),
-            data=entry.get("data", {})
+            data=entry.get("data", {}),
+            session_id=entry.get("session_id")  # Capture top-level session_id
         )
 
 

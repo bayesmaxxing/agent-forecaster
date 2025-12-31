@@ -2,6 +2,7 @@
 
 from datetime import datetime
 from typing import Dict, List, Optional, Any
+from collections import defaultdict
 from .session import SessionModel, AgentNode, AgentState
 from .events import TimelineEvent, ToolCallSpan, LLMCallMarker
 
@@ -13,6 +14,7 @@ class AgentTreeBuilder:
         self.session = SessionModel(session_id="unknown")
         self.current_parent: Optional[str] = None  # Track current parent for subagent creation
         self.pending_tool_calls: Dict[str, ToolCallSpan] = {}  # tool_call_id -> ToolCallSpan
+        self.pending_tool_calls_queue: Dict[str, List[ToolCallSpan]] = defaultdict(list)  # (agent, tool) -> list of spans
 
     def process_event(self, event_data: Dict[str, Any]) -> None:
         """Process a single JSONL log entry and update session state."""
@@ -46,9 +48,9 @@ class AgentTreeBuilder:
         """Handle session start event."""
         if self.session.start_time is None:
             self.session.start_time = event.timestamp
-        # Update session_id if available in event
-        if event.data.get("session_id"):
-            self.session.session_id = event.data["session_id"]
+        # Update session_id from top-level field
+        if event.session_id:
+            self.session.session_id = event.session_id
 
     def _handle_session_end(self, event: TimelineEvent) -> None:
         """Handle session end event."""
@@ -149,9 +151,14 @@ class AgentTreeBuilder:
             tool_call_id=tool_call_id,
         )
 
-        # Track pending tool calls
+        # Track pending tool calls using both strategies:
+        # 1. By tool_call_id (if available)
         if tool_call_id:
             self.pending_tool_calls[tool_call_id] = span
+
+        # 2. By agent+tool queue (for FIFO matching when no ID)
+        queue_key = f"{agent_name}:{tool_name}"
+        self.pending_tool_calls_queue[queue_key].append(span)
 
         # Track which agent is making the call
         if tool_name in ("subagent_manager", "SubagentManagerTool"):
@@ -167,19 +174,33 @@ class AgentTreeBuilder:
         """Handle tool result event."""
         agent_name = event.agent_name
         tool_call_id = event.data.get("tool_call_id")
+        tool_name = event.data.get("tool_name", "unknown")
         result_content = event.data.get("result_content", "")
         is_error = event.data.get("is_error", False)
 
-        # Complete the tool call span
+        span = None
+
+        # Try to match by tool_call_id first (if available)
         if tool_call_id and tool_call_id in self.pending_tool_calls:
             span = self.pending_tool_calls[tool_call_id]
+            del self.pending_tool_calls[tool_call_id]
+
+        # If no match by ID, try FIFO matching by agent+tool
+        if not span and agent_name:
+            queue_key = f"{agent_name}:{tool_name}"
+            if queue_key in self.pending_tool_calls_queue and self.pending_tool_calls_queue[queue_key]:
+                span = self.pending_tool_calls_queue[queue_key].pop(0)
+                # Also remove from pending_tool_calls if it was there
+                if span.tool_call_id and span.tool_call_id in self.pending_tool_calls:
+                    del self.pending_tool_calls[span.tool_call_id]
+
+        # Complete the tool call span
+        if span:
             span.end_time = event.timestamp
             span.result = result_content
             span.is_error = is_error
-
             # Move to completed list
             self.session.tool_calls.append(span)
-            del self.pending_tool_calls[tool_call_id]
 
         # Update agent state back to running
         agent = self.session.agents.get(agent_name)

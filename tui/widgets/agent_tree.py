@@ -32,9 +32,17 @@ class AgentTreeWidget(Tree):
         root.set_label(f"Session: {self.session.session_id}")
         root.expand()
 
-        # Build tree from hierarchy
-        if self.session.root_agent:
-            self._add_agent_subtree(root, self.session.root_agent)
+        # Build tree from hierarchy - show all agents with no parent as roots
+        root_agents = [name for name, agent in self.session.agents.items() if agent.parent is None]
+
+        if not root_agents:
+            # Fallback: if no agents have parent=None, use session.root_agent
+            if self.session.root_agent:
+                root_agents = [self.session.root_agent]
+
+        # Add all root agents and their subtrees
+        for agent_name in root_agents:
+            self._add_agent_subtree(root, agent_name)
 
     def _add_agent_subtree(self, parent_node: TreeNode, agent_name: str) -> None:
         """Recursively add agent and its children to the tree."""

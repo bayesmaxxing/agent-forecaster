@@ -208,6 +208,7 @@ class Subagent:
                         agent_name=self.name,
                         tool_name=tool_call.function.name,
                         params=params_dict,
+                        tool_call_id=tool_call.id,
                     )
 
             await self.history.add_message(

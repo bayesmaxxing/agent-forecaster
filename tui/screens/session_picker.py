@@ -13,7 +13,8 @@ class SessionPickerScreen(Screen):
 
     BINDINGS = [
         Binding("q", "quit", "Quit"),
-        Binding("enter", "select", "Select Session"),
+        Binding("enter", "select", "Select Session", show=True),
+        Binding("return", "select", "Select Session", show=False),  # Alternative for Enter
         Binding("r", "refresh", "Refresh"),
     ]
 
@@ -97,8 +98,22 @@ class SessionPickerScreen(Screen):
         """Refresh the session list."""
         self.load_sessions()
 
+    def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
+        """Handle row selection in the table."""
+        if not self.sessions:
+            return
+
+        # Get the row index from the event
+        row_index = event.cursor_row
+
+        if row_index is not None and row_index < len(self.sessions):
+            selected_session = self.sessions[row_index]
+            self.dismiss(selected_session)
+
     def action_select(self) -> None:
-        """Select the highlighted session."""
+        """Select the highlighted session (fallback for Enter key)."""
+        self.app.notify("Select action triggered!", severity="information")  # DEBUG
+
         table = self.query_one("#session-table", DataTable)
 
         if not self.sessions:
@@ -107,6 +122,7 @@ class SessionPickerScreen(Screen):
 
         # Get selected row index
         cursor_row = table.cursor_row
+        self.app.notify(f"Cursor row: {cursor_row}, Total sessions: {len(self.sessions)}", severity="information")  # DEBUG
 
         # DataTable cursor_row is 0-indexed
         if cursor_row is None:
@@ -118,6 +134,7 @@ class SessionPickerScreen(Screen):
             return
 
         selected_session = self.sessions[cursor_row]
+        self.app.notify(f"Selected: {selected_session['session_id']}", severity="information")  # DEBUG
         self.dismiss(selected_session)
 
     def action_quit(self) -> None:
