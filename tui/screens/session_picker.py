@@ -59,6 +59,9 @@ class SessionPickerScreen(Screen):
         # Load sessions
         self.load_sessions()
 
+        # Focus the table so keyboard navigation works
+        table.focus()
+
     def load_sessions(self) -> None:
         """Load and display available sessions."""
         table = self.query_one("#session-table", DataTable)
@@ -99,14 +102,22 @@ class SessionPickerScreen(Screen):
         table = self.query_one("#session-table", DataTable)
 
         if not self.sessions:
+            self.app.notify("No sessions available", severity="warning")
             return
 
-        # Get selected row
-        row_key = table.cursor_row
-        if row_key is None or row_key >= len(self.sessions):
+        # Get selected row index
+        cursor_row = table.cursor_row
+
+        # DataTable cursor_row is 0-indexed
+        if cursor_row is None:
+            self.app.notify("No row selected", severity="warning")
             return
 
-        selected_session = self.sessions[row_key]
+        if cursor_row >= len(self.sessions):
+            self.app.notify("Invalid selection", severity="error")
+            return
+
+        selected_session = self.sessions[cursor_row]
         self.dismiss(selected_session)
 
     def action_quit(self) -> None:
