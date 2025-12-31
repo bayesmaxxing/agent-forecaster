@@ -19,6 +19,7 @@ class Timeline(Widget):
     zoom_level = reactive(1.0)  # 1.0 = normal, >1 = zoomed in, <1 = zoomed out
     pan_offset = reactive(0.0)  # Seconds offset from start
     selected_item = reactive(None)  # Selected span or marker
+    auto_scroll = reactive(False)  # Auto-scroll to latest in live mode
 
     class ItemSelected(Message):
         """Message sent when a timeline item is selected."""
@@ -36,15 +37,25 @@ class Timeline(Widget):
         self.min_time: Optional[datetime] = None
         self.max_time: Optional[datetime] = None
         self.can_focus = True
+        self.live_mode = False
 
-    def update_from_session(self, session: SessionModel) -> None:
+    def update_from_session(self, session: SessionModel, live_mode: bool = False) -> None:
         """Update timeline from session data."""
         self.session = session
         self.builder = TimelineBuilder(session)
         self.tracks = self.builder.assign_tracks()
+        self.live_mode = live_mode
+        self.auto_scroll = live_mode  # Auto-scroll in live mode
 
         # Calculate time range
         self._calculate_time_range()
+
+        # Auto-scroll to end in live mode
+        if self.auto_scroll and self.min_time and self.max_time:
+            total_duration = (self.max_time - self.min_time).total_seconds()
+            visible_duration = total_duration / self.zoom_level
+            self.pan_offset = max(0, total_duration - visible_duration)
+
         self.refresh()
 
     def _calculate_time_range(self) -> None:
@@ -299,6 +310,9 @@ class Timeline(Widget):
         if not self.min_time or not self.max_time:
             return
 
+        # Disable auto-scroll when manually panning
+        self.auto_scroll = False
+
         total_duration = (self.max_time - self.min_time).total_seconds()
         pan_amount = (total_duration / self.zoom_level) * 0.1
         self.pan_offset = max(0, self.pan_offset - pan_amount)
@@ -308,6 +322,9 @@ class Timeline(Widget):
         """Pan timeline to the right."""
         if not self.min_time or not self.max_time:
             return
+
+        # Disable auto-scroll when manually panning
+        self.auto_scroll = False
 
         total_duration = (self.max_time - self.min_time).total_seconds()
         pan_amount = (total_duration / self.zoom_level) * 0.1

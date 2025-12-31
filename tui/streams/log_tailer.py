@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 from typing import AsyncIterator, Dict, Any, Optional
 import asyncio
+from watchfiles import awatch
 
 
 class LogReader:
@@ -75,17 +76,17 @@ class LogReader:
 
 
 class LogTailer:
-    """Tail JSONL log files in real-time."""
+    """Tail JSONL log files in real-time using file watching."""
 
-    def __init__(self, log_path: str, poll_interval: float = 0.5):
+    def __init__(self, log_path: str, use_watchfiles: bool = True):
         """Initialize log tailer.
 
         Args:
             log_path: Path to the JSONL log file.
-            poll_interval: How often to check for new content (seconds).
+            use_watchfiles: Use watchfiles for efficient file watching (default: True).
         """
         self.log_path = Path(log_path)
-        self.poll_interval = poll_interval
+        self.use_watchfiles = use_watchfiles
         self.reader = LogReader(log_path)
         self._stop = False
 
@@ -99,7 +100,41 @@ class LogTailer:
         for entry in self.reader.read_all():
             yield entry
 
-        # Then poll for new entries
+        if self.use_watchfiles:
+            # Use watchfiles for efficient file watching
+            async for entry in self._tail_with_watchfiles():
+                if self._stop:
+                    break
+                yield entry
+        else:
+            # Fallback to polling
+            async for entry in self._tail_with_polling():
+                if self._stop:
+                    break
+                yield entry
+
+    async def _tail_with_watchfiles(self) -> AsyncIterator[Dict[str, Any]]:
+        """Tail using watchfiles library for efficient file watching."""
+        # Watch the parent directory since the file might not exist yet
+        watch_path = self.log_path.parent if self.log_path.parent.exists() else self.log_path
+
+        try:
+            async for changes in awatch(watch_path):
+                # Check if our file was modified
+                for change_type, changed_path in changes:
+                    if Path(changed_path) == self.log_path:
+                        # Read new entries
+                        new_entries = self.reader.read_new()
+                        for entry in new_entries:
+                            yield entry
+        except Exception as e:
+            # Fallback to polling on error
+            print(f"Watchfiles error: {e}, falling back to polling")
+            async for entry in self._tail_with_polling():
+                yield entry
+
+    async def _tail_with_polling(self) -> AsyncIterator[Dict[str, Any]]:
+        """Tail using simple polling as fallback."""
         while not self._stop:
             new_entries = self.reader.read_new()
 
@@ -107,7 +142,7 @@ class LogTailer:
                 yield entry
 
             # Wait before next poll
-            await asyncio.sleep(self.poll_interval)
+            await asyncio.sleep(0.5)
 
     def stop(self):
         """Stop tailing the log file."""

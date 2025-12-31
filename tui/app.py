@@ -12,8 +12,9 @@ from .widgets.event_list import EventListWidget
 from .widgets.timeline import Timeline
 from .widgets.event_inspector import EventInspector
 from .widgets.metrics_panel import MetricsPanel
-from .streams import LogReader, EventProcessor
+from .streams import LogReader, LogTailer, EventProcessor
 from .models.session import SessionModel
+import asyncio
 
 
 class MainScreen(Container):
@@ -108,6 +109,7 @@ class AgentForecasterTUI(App):
         Binding("?", "help", "Help"),
         Binding("f", "filter", "Filter Events"),
         Binding("/", "search", "Search"),
+        Binding("space", "toggle_pause", "Pause/Resume", show=False),
     ]
 
     def __init__(self, session_id: str | None = None, live_mode: bool = False):
@@ -116,6 +118,10 @@ class AgentForecasterTUI(App):
         self.live_mode = live_mode
         self.session: SessionModel | None = None
         self.log_path: str | None = None
+        self.paused = False
+        self.tailer: LogTailer | None = None
+        self.live_task: asyncio.Task | None = None
+        self.event_processor: EventProcessor | None = None
 
     def on_mount(self) -> None:
         """Handle app mounting."""
@@ -149,30 +155,65 @@ class AgentForecasterTUI(App):
     def load_session_from_path(self, log_path: str) -> None:
         """Load a session from a log file path."""
         try:
-            # Read log file
-            reader = LogReader(log_path)
-            entries = reader.read_all()
+            if self.live_mode:
+                # Start live monitoring
+                self.event_processor = EventProcessor(on_update=self.on_live_update)
+                self.tailer = LogTailer(log_path)
 
-            # Process events
-            processor = EventProcessor()
-            processor.process_batch(entries)
-            self.session = processor.get_session()
+                # Read existing entries
+                reader = LogReader(log_path)
+                entries = reader.read_all()
+                self.event_processor.process_batch(entries)
+                self.session = self.event_processor.get_session()
 
-            # Update UI
-            self.update_ui()
+                # Start tailing task
+                self.live_task = asyncio.create_task(self._tail_log_file())
 
-            self.notify(f"Loaded session: {self.session.session_id}")
+                self.update_ui()
+                self.notify(f"Live monitoring: {self.session.session_id} 🔴 LIVE", severity="information")
+            else:
+                # Static mode - load once
+                reader = LogReader(log_path)
+                entries = reader.read_all()
+
+                # Process events
+                processor = EventProcessor()
+                processor.process_batch(entries)
+                self.session = processor.get_session()
+
+                # Update UI
+                self.update_ui()
+                self.notify(f"Loaded session: {self.session.session_id}")
 
         except Exception as e:
             self.notify(f"Error loading session: {e}", severity="error")
+
+    async def _tail_log_file(self) -> None:
+        """Background task to tail log file in live mode."""
+        if not self.tailer or not self.event_processor:
+            return
+
+        try:
+            async for entry in self.tailer.tail():
+                if not self.paused:
+                    self.event_processor.process_entry(entry)
+        except Exception as e:
+            self.notify(f"Live monitoring error: {e}", severity="error")
+
+    def on_live_update(self, session: SessionModel) -> None:
+        """Called when session is updated in live mode."""
+        self.session = session
+        self.call_from_thread(self.update_ui)
 
     def update_ui(self) -> None:
         """Update all UI components with current session data."""
         if not self.session:
             return
 
-        # Update title
-        self.title = f"Agent Forecaster TUI - {self.session.session_id}"
+        # Update title with live indicator
+        live_indicator = " 🔴 LIVE" if self.live_mode and not self.paused else ""
+        pause_indicator = " ⏸ PAUSED" if self.paused else ""
+        self.title = f"Agent Forecaster TUI - {self.session.session_id}{live_indicator}{pause_indicator}"
 
         # Update widgets
         try:
@@ -183,7 +224,7 @@ class AgentForecasterTUI(App):
 
         try:
             timeline = self.query_one("#timeline", Timeline)
-            timeline.update_from_session(self.session)
+            timeline.update_from_session(self.session, live_mode=self.live_mode)
         except:
             pass  # Widget not yet mounted
 
@@ -243,7 +284,16 @@ class AgentForecasterTUI(App):
     def action_search(self) -> None:
         """Show search dialog."""
         # Placeholder for search functionality
-        self.notify("Search feature coming in Phase 4", severity="information")
+        self.notify("Search feature coming soon", severity="information")
+
+    def action_toggle_pause(self) -> None:
+        """Toggle pause/resume in live mode."""
+        if not self.live_mode:
+            return
+
+        self.paused = not self.paused
+        status = "⏸ PAUSED" if self.paused else "▶ LIVE"
+        self.notify(f"Live monitoring {status}")
 
 
 def run_tui(session_id: str | None = None, live_mode: bool = False):
