@@ -7,12 +7,14 @@ from textual.widgets import Header, Footer, Static
 from .screens.session_picker import SessionPickerScreen
 from .widgets.agent_tree import AgentTreeWidget
 from .widgets.event_list import EventListWidget
+from .widgets.timeline import Timeline
+from .widgets.event_inspector import EventInspector
 from .streams import LogReader, EventProcessor
 from .models.session import SessionModel
 
 
 class MainScreen(Container):
-    """Main screen showing agent tree and event list."""
+    """Main screen showing agent tree, timeline, and event inspector."""
 
     def compose(self) -> ComposeResult:
         """Compose the main screen layout."""
@@ -22,10 +24,17 @@ class MainScreen(Container):
                 yield Static("Agent Hierarchy", id="tree-title")
                 yield AgentTreeWidget(id="agent-tree")
 
-            # Right panel: Event list
-            with Vertical(id="right-panel"):
-                yield Static("Events", id="event-title")
-                yield EventListWidget(id="event-list")
+            # Right panels
+            with Vertical(id="right-panels"):
+                # Top right: Timeline
+                with Vertical(id="timeline-panel"):
+                    yield Static("Timeline (Gantt View) - Use +/- to zoom, h/l to pan", id="timeline-title")
+                    yield Timeline(id="timeline")
+
+                # Bottom right: Event inspector
+                with Vertical(id="inspector-panel"):
+                    yield Static("Event Inspector", id="inspector-title")
+                    yield EventInspector(id="event-inspector")
 
 
 class AgentForecasterTUI(App):
@@ -38,7 +47,7 @@ class AgentForecasterTUI(App):
         background: $surface;
     }
 
-    #tree-title, #event-title {
+    #tree-title, #timeline-title, #inspector-title {
         text-align: center;
         background: $primary;
         padding: 0 1;
@@ -46,12 +55,21 @@ class AgentForecasterTUI(App):
     }
 
     #left-panel {
-        width: 30%;
+        width: 25%;
         border-right: solid $primary;
     }
 
-    #right-panel {
-        width: 70%;
+    #right-panels {
+        width: 75%;
+    }
+
+    #timeline-panel {
+        height: 60%;
+        border-bottom: solid $primary;
+    }
+
+    #inspector-panel {
+        height: 40%;
     }
 
     #agent-tree {
@@ -59,7 +77,13 @@ class AgentForecasterTUI(App):
         width: 100%;
     }
 
-    #event-list {
+    #timeline {
+        height: 100%;
+        width: 100%;
+        border: solid $primary;
+    }
+
+    #event-inspector {
         height: 100%;
         width: 100%;
     }
@@ -151,10 +175,28 @@ class AgentForecasterTUI(App):
             pass  # Widget not yet mounted
 
         try:
+            timeline = self.query_one("#timeline", Timeline)
+            timeline.update_from_session(self.session)
+        except:
+            pass  # Widget not yet mounted
+
+        try:
             event_list = self.query_one("#event-list", EventListWidget)
             event_list.update_from_session(self.session)
         except:
             pass  # Widget not yet mounted
+
+    def on_tree_node_highlighted(self, event) -> None:
+        """Handle agent tree node selection."""
+        try:
+            agent_tree = self.query_one("#agent-tree", AgentTreeWidget)
+            agent = agent_tree.get_selected_agent()
+
+            if agent:
+                inspector = self.query_one("#event-inspector", EventInspector)
+                inspector.show_agent(agent)
+        except:
+            pass
 
     def compose(self) -> ComposeResult:
         """Compose the app UI."""
