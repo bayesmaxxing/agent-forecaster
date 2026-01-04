@@ -94,7 +94,7 @@ class GetForecastPointsTool(Tool):
     async def execute(self, forecast_id: int):
         """Execute the forecasting tools."""
         try:
-            response = await post_request(url_postfix=f"forecast-points/user", data={"forecast_id": forecast_id, "user_id": self.user_id})
+            response = await get_request(url_postfix=f"forecast-points?user_id={self.user_id}&forecast_id={forecast_id}")
             return {"success": True, "data": response}
         except Exception as e:
             return {"success": False, "error": f"Failed to retrieve forecast points: {str(e)}"}
