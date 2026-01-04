@@ -8,6 +8,16 @@ from .subagent_tool import SubagentManagerTool
 from .shared_memory_tool import SharedMemoryTool, SharedMemoryManagerTool
 from .persistent_memory_tool import PersistentMemoryTool
 from .code_executor_tool import CodeExecutorTool
+from .local_tools import (
+    LocalBashTool,
+    LocalReadFileTool,
+    LocalWriteFileTool,
+    LocalEditFileTool,
+    LocalListFilesTool,
+    WorkspaceManager,
+    get_workspace,
+    set_workspace,
+)
 
 __all__ = [
     "Tool",
@@ -22,5 +32,20 @@ __all__ = [
     "SubagentManagerTool",
     "SharedMemoryManagerTool",
     "PersistentMemoryTool",
-    "CodeExecutorTool"
+    "CodeExecutorTool",
+    # VM Tools (Docker-based)
+    "BashTool",
+    "ReadFileTool",
+    "WriteFileTool",
+    "EditFileTool",
+    "ListFilesTool",
+    # Local Tools (subprocess-based, workspace-sandboxed)
+    "LocalBashTool",
+    "LocalReadFileTool",
+    "LocalWriteFileTool",
+    "LocalEditFileTool",
+    "LocalListFilesTool",
+    "WorkspaceManager",
+    "get_workspace",
+    "set_workspace",
 ]

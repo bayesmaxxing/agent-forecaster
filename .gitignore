@@ -7,7 +7,10 @@
 /logs/*.log
 /sub_agent_logs/*.log
 *.jsonl
-# Shared memory 
+# Shared memory
 shared_memory/
 /log-analyzer/target/
 /persistent_memory
+
+# VM agent workspace (persistent data)
+/agent_workspace/
