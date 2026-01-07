@@ -8,10 +8,16 @@ import argparse
 import shutil
 from datetime import datetime
 from agents.agent import Agent, ModelConfig
-from agents.tools import SubagentManagerTool, SharedMemoryManagerTool
+from agents.tools import SubagentManagerTool
 from agents.tools.forecasting_tools import GetPointsCreatedToday
-from agents.tools.shared_memory_tool import SharedMemoryTool
 from agents.tools.persistent_memory_tool import PersistentMemoryTool
+from agents.tools.local_tools import (
+    LocalBashTool,
+    LocalReadFileTool,
+    LocalWriteFileTool,
+    LocalListFilesTool,
+    WorkspaceManager,
+)
 from agents.utils.logging_util import set_session_logger, cleanup_session_logger
 
 def setup_environment():
@@ -25,25 +31,25 @@ def setup_environment():
     return True
 
 
-def clear_shared_memory():
-    """Clear all files from the /shared_memory directory."""
-    shared_memory_path = "shared_memory"
-    
-    if os.path.exists(shared_memory_path):
+def clear_workspace():
+    """Clear all files from the multi_agent_workspace directory."""
+    workspace_path = "multi_agent_workspace"
+
+    if os.path.exists(workspace_path):
         try:
-            # Remove all files and subdirectories in shared_memory
-            for filename in os.listdir(shared_memory_path):
-                file_path = os.path.join(shared_memory_path, filename)
+            # Remove all files and subdirectories in workspace
+            for filename in os.listdir(workspace_path):
+                file_path = os.path.join(workspace_path, filename)
                 if os.path.isfile(file_path) or os.path.islink(file_path):
                     os.unlink(file_path)  # Remove file or link
                 elif os.path.isdir(file_path):
                     shutil.rmtree(file_path)  # Remove directory and all contents
-            
-            print(f"✅ Cleared all files from {shared_memory_path}/")
+
+            print(f"✅ Cleared all files from {workspace_path}/")
         except Exception as e:
-            print(f"❌ Error clearing {shared_memory_path}/: {e}")
+            print(f"❌ Error clearing {workspace_path}/: {e}")
     else:
-        print(f"ℹ️  Directory {shared_memory_path}/ does not exist")
+        print(f"ℹ️  Directory {workspace_path}/ does not exist")
 
 
 async def main(model: str, verbose: bool):
@@ -71,9 +77,15 @@ async def main(model: str, verbose: bool):
     system_prompt = open("prompts/multi_agent_prompt_v2.md", "r").read()
     system_prompt = system_prompt.replace("{current_date}", current_date)
 
+    # Create subagent manager tool (has its own workspace)
     subagent_tool = SubagentManagerTool()
-    shared_memory_manager_tool = SharedMemoryManagerTool()
-    shared_memory_tool = SharedMemoryTool(agent_name="Orchestrator", task_id="multi_agent_session")
+
+    # Local filesystem tools for orchestrator (use same workspace as subagents)
+    orchestrator_workspace = subagent_tool.workspace
+    bash_tool = LocalBashTool(workspace=orchestrator_workspace)
+    read_file_tool = LocalReadFileTool(workspace=orchestrator_workspace)
+    write_file_tool = LocalWriteFileTool(workspace=orchestrator_workspace)
+    list_files_tool = LocalListFilesTool(workspace=orchestrator_workspace)
 
     persistent_memory_tool = PersistentMemoryTool()
     get_points_created_today_tool = GetPointsCreatedToday(model="multi")
@@ -83,7 +95,15 @@ async def main(model: str, verbose: bool):
         name="Orchestrator",
         system=system_prompt,
         config=config,
-        tools = [subagent_tool, shared_memory_manager_tool, shared_memory_tool, persistent_memory_tool, get_points_created_today_tool],
+        tools=[
+            subagent_tool,
+            bash_tool,
+            read_file_tool,
+            write_file_tool,
+            list_files_tool,
+            persistent_memory_tool,
+            get_points_created_today_tool
+        ],
         verbose=verbose,
     )
     
@@ -112,9 +132,9 @@ async def main(model: str, verbose: bool):
 
             # Give the agent autonomy to decide what to do next
             if cycle_count == 1:
-                prompt = "Begin autonomous forecasting. Analyze available forecasts, create a strategic plan, and work toward producing high-quality forecasts. When you feel you have accomplished meaningful forecasting work and there's no more valuable work to do in this session, respond with 'AUTONOMOUS_SESSION_COMPLETE' to end gracefully."
+                prompt = "Begin autonomous forecasting. Analyze available forecasts, create a strategic plan, and work toward producing high-quality forecasts. Use the filesystem (multi_agent_workspace/) for working memory and coordination. When you feel you have accomplished meaningful forecasting work and there's no more valuable work to do in this session, respond with 'AUTONOMOUS_SESSION_COMPLETE' to end gracefully."
             else:
-                prompt = "Continue your autonomous work from where you left off. Check your previous progress in shared memory and decide on next steps. If you feel the session should end because you've accomplished your goals, respond with 'AUTONOMOUS_SESSION_COMPLETE'."
+                prompt = "Continue your autonomous work from where you left off. Check your previous progress in the filesystem (use list_files and read_file) and decide on next steps. If you feel the session should end because you've accomplished your goals, respond with 'AUTONOMOUS_SESSION_COMPLETE'."
 
             response = await agent.run_async(user_input=prompt)
 
@@ -140,7 +160,7 @@ async def main(model: str, verbose: bool):
 
     # Cleanup
     cleanup_session_logger()
-    clear_shared_memory()
+    clear_workspace()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Forecasting Agent")
