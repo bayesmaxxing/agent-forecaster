@@ -12,5 +12,6 @@ shared_memory/
 /log-analyzer/target/
 /persistent_memory
 
-# VM agent workspace (persistent data)
+# workspaces for agent and multi-agent
 /agent_workspace/
+/multi_agent_workspace/
