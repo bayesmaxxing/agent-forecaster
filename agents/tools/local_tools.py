@@ -102,7 +102,8 @@ def set_workspace(workspace: WorkspaceManager) -> None:
 class LocalBashTool(Tool):
     """Execute bash commands locally, sandboxed to workspace."""
 
-    def __init__(self):
+    def __init__(self, workspace: Optional[WorkspaceManager] = None):
+        self._workspace = workspace
         super().__init__(
             name="bash",
             description="""Execute a bash command locally in the workspace directory.
@@ -141,7 +142,7 @@ Avoid using absolute paths or navigating outside the workspace.""",
         )
 
     async def execute(self, command: str, timeout: int = 120) -> str:
-        workspace = get_workspace()
+        workspace = self._workspace or get_workspace()
 
         # Safety check
         is_safe, reason = workspace.is_safe_command(command)
@@ -187,7 +188,8 @@ Avoid using absolute paths or navigating outside the workspace.""",
 class LocalReadFileTool(Tool):
     """Read file contents from the workspace."""
 
-    def __init__(self):
+    def __init__(self, workspace: Optional[WorkspaceManager] = None):
+        self._workspace = workspace
         super().__init__(
             name="read_file",
             description="""Read the contents of a file from the workspace.
@@ -216,7 +218,7 @@ The workspace structure:
         )
 
     async def execute(self, path: str, limit: Optional[int] = None) -> str:
-        workspace = get_workspace()
+        workspace = self._workspace or get_workspace()
 
         try:
             resolved = workspace.resolve_path(path)
@@ -246,7 +248,8 @@ The workspace structure:
 class LocalWriteFileTool(Tool):
     """Write content to a file in the workspace."""
 
-    def __init__(self):
+    def __init__(self, workspace: Optional[WorkspaceManager] = None):
+        self._workspace = workspace
         super().__init__(
             name="write_file",
             description="""Write content to a file in the workspace.
@@ -279,7 +282,7 @@ Use this to:
         )
 
     async def execute(self, path: str, content: str) -> str:
-        workspace = get_workspace()
+        workspace = self._workspace or get_workspace()
 
         try:
             resolved = workspace.resolve_path(path)
@@ -299,7 +302,8 @@ Use this to:
 class LocalEditFileTool(Tool):
     """Edit an existing file using string replacement."""
 
-    def __init__(self):
+    def __init__(self, workspace: Optional[WorkspaceManager] = None):
+        self._workspace = workspace
         super().__init__(
             name="edit_file",
             description="""Edit an existing file by replacing a specific string.
@@ -330,7 +334,7 @@ For reading files before editing, use read_file first.""",
         )
 
     async def execute(self, path: str, old_string: str, new_string: str) -> str:
-        workspace = get_workspace()
+        workspace = self._workspace or get_workspace()
 
         try:
             resolved = workspace.resolve_path(path)
@@ -361,7 +365,8 @@ For reading files before editing, use read_file first.""",
 class LocalListFilesTool(Tool):
     """List files in a directory."""
 
-    def __init__(self):
+    def __init__(self, workspace: Optional[WorkspaceManager] = None):
+        self._workspace = workspace
         super().__init__(
             name="list_files",
             description="""List files and directories in the workspace.
@@ -382,7 +387,7 @@ Default is the workspace root.""",
         )
 
     async def execute(self, path: str = ".") -> str:
-        workspace = get_workspace()
+        workspace = self._workspace or get_workspace()
 
         try:
             resolved = workspace.resolve_path(path)
